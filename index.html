@@ -1,0 +1,1996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cakes Waiheke Island | The Old Flour Shop Bakery, Oneroa</title>
+<meta name="description" content="Order celebration cakes from The Old Flour Shop Bakery in Oneroa, Waiheke Island. Small batch cakes available for pickup or delivery across Waiheke.">
+<link rel="canonical" href="https://www.theoldflourshop.co.nz/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Cakes Waiheke Island | The Old Flour Shop Bakery, Oneroa">
+<meta property="og:description" content="Order celebration cakes from The Old Flour Shop Bakery in Oneroa, Waiheke Island. Small batch cakes available for pickup or delivery across Waiheke.">
+<meta property="og:url" content="https://www.theoldflourshop.co.nz/">
+<meta property="og:image" content="https://www.theoldflourshop.co.nz/images/og-cover.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:type" content="image/jpeg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&family=Courier+Prime:wght@400;700&family=Homemade+Apple&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#F5EDE6;
+    --cream-2:#FCF3E6;
+    --paper:#FCFCFC;
+    --sage:#8A8C74;
+    --sage-dark:#2B3C25;
+    --coral:#E5B2A8;
+    --coral-deep:#C17E70;
+    --wheat:#DDAD75;
+    --dusty-blue:#7B96A7;
+    --ink:#2B3C25;
+    --ink-soft:#5F6350;
+    --line:#DAD2C0;
+    --radius:2px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--cream);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.display{
+    font-family:'Fraunces',serif;
+    font-weight:500;
+    letter-spacing:-0.01em;
+    margin:0;
+  }
+  .eyebrow{
+    font-family:'Courier Prime',monospace;
+    text-transform:uppercase;
+    letter-spacing:0.14em;
+    font-size:11px;
+    color:var(--sage-dark);
+  }
+  a{color:inherit;}
+  img{max-width:100%;display:block;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 28px;}
+
+  /* ---------- header ---------- */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(251,246,238,0.92);
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 28px;max-width:1120px;margin:0 auto;
+  }
+  .logo{
+    font-family:'Fraunces',serif;font-size:24px;font-weight:600;letter-spacing:-0.02em;
+    display:flex;align-items:center;gap:10px;
+  }
+  .logo svg{width:30px;height:30px;flex-shrink:0;}
+  .logo-short{display:none;}
+  .navlinks{display:flex;gap:32px;align-items:center;font-size:14px;}
+  .navlinks a{text-decoration:none;color:var(--ink-soft);transition:color .15s;}
+  .navlinks a:hover{color:var(--sage-dark);}
+  .btn{
+    font-family:'Inter',sans-serif;font-weight:600;font-size:14px;
+    padding:11px 22px;border-radius:999px;border:1px solid var(--ink);
+    background:var(--ink);color:var(--cream);cursor:pointer;
+    transition:transform .15s ease, background .15s ease;
+    text-decoration:none;display:inline-block;
+  }
+  .btn:hover{transform:translateY(-1px);background:var(--sage-dark);border-color:var(--sage-dark);}
+  .btn-ghost{background:transparent;color:var(--ink);}
+  .btn-ghost:hover{background:var(--ink);color:var(--cream);}
+  .btn-coral{background:var(--coral-deep);border-color:var(--coral-deep);}
+  .btn-coral:hover{background:#b8624f;border-color:#b8624f;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+
+  /* ---------- hero ---------- */
+  .hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center;}
+  .hero h1{font-size:56px;line-height:1.03;margin:14px 0 16px;}
+  .hero p.lead{font-size:17px;color:var(--ink-soft);max-width:440px;line-height:1.55;margin-bottom:22px;}
+  .hero-ctas{display:flex;gap:14px;align-items:center;}
+  .allergen-accordion{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:4px 0;}
+  .allergen-accordion summary{
+    list-style:none;cursor:pointer;padding:14px 2px;
+    font-family:'Courier Prime',monospace;font-size:12px;text-transform:uppercase;letter-spacing:.08em;
+    color:var(--ink-soft);display:flex;align-items:center;justify-content:space-between;
+  }
+  .allergen-accordion summary::-webkit-details-marker{display:none;}
+  .allergen-accordion summary::after{
+    content:'+';font-family:'Inter',sans-serif;font-size:16px;font-weight:400;color:var(--ink-soft);
+    transition:transform .2s ease;flex-shrink:0;margin-left:12px;
+  }
+  .allergen-accordion[open] summary::after{content:'+';transform:rotate(45deg);}
+  .allergen-body{padding:0 2px 18px;}
+  .hero-art-wrap{position:relative;width:93%;margin-left:auto;}
+  .hero-art{
+    position:relative;aspect-ratio:1/1;border-radius:6px;
+    background:linear-gradient(160deg,var(--coral) 0%, var(--wheat) 100%);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;
+  }
+  .hero-badge{
+    position:absolute;right:-22px;bottom:-22px;width:120px;height:120px;
+    filter:drop-shadow(0 6px 14px rgba(43,38,32,0.25));
+    z-index:5;
+  }
+  .visit-row{display:flex;align-items:flex-start;gap:14px;margin-bottom:18px;}
+  .visit-icon{width:34px;height:34px;border-radius:50%;background:var(--sage-dark);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .visit-icon svg{width:17px;height:17px;stroke:var(--cream);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+  .visit-row p{color:var(--ink-soft);font-size:14.5px;line-height:1.5;}
+  .visit-row a{text-decoration:none;}
+  .visit-row a:hover{text-decoration:underline;}
+
+  /* ---------- section shells ---------- */
+  :root{
+    --space-sm:28px;   /* small gap: 24-32px */
+    --space-md:52px;   /* medium gap: 48-56px */
+    --space-lg:68px;   /* large section gap: 64-72px */
+  }
+  section{padding:var(--space-lg) 0;}
+  .sec-hero{padding-top:34px;padding-bottom:34px;}
+  .sec-cakes{padding-top:24px;padding-bottom:0;}
+  .sec-allergen{padding-top:20px;padding-bottom:28px;}
+  .sec-how{padding-top:36px;padding-bottom:36px;}
+  .sec-visit{padding-top:36px;padding-bottom:36px;}
+  .section-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px;gap:24px;flex-wrap:wrap;}
+  .section-head h2{font-size:34px;}
+  .section-head p{color:var(--ink-soft);max-width:420px;font-size:15px;line-height:1.5;}
+
+  /* ---------- how it works ---------- */
+  .how{background:var(--sage-dark);color:var(--cream);}
+  .how .eyebrow{color:var(--wheat);}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;margin-top:25px;}
+  .step{border-top:1px solid rgba(251,246,238,0.25);padding-top:18px;}
+  .step .num{font-family:'Courier Prime',monospace;font-size:13px;color:var(--wheat);}
+  .step h3{font-size:19px;margin:10px 0 8px;font-weight:500;}
+  .step p{font-size:14px;color:rgba(251,246,238,0.75);line-height:1.5;margin:0;}
+
+  /* ---------- cake grid ---------- */
+  .cakegrid{display:grid;grid-template-columns:repeat(3,1fr);column-gap:32px;row-gap:44px;}
+  .cake-card{
+    display:flex;flex-direction:column;
+  }
+  .cake-thumb{
+    aspect-ratio:4/3;border-radius:4px;overflow:hidden;
+  }
+  .cake-thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s ease;}
+  .cake-card:hover .cake-thumb img{transform:scale(1.035);}
+  .cake-body{padding:0;margin-top:20px;display:flex;flex-direction:column;flex:1;}
+  .cake-body h3{font-size:20px;margin-bottom:6px;}
+  .cake-tags{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+  .tag{font-size:10.5px;font-family:'Courier Prime',monospace;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border:1px solid var(--line);border-radius:999px;color:var(--ink-soft);}
+  .cake-body p.desc{font-size:14px;color:var(--ink-soft);line-height:1.5;margin-bottom:15px;}
+  .cake-foot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;}
+  .price-from{font-family:'Fraunces',serif;font-size:18px;}
+  .price-from span{font-size:12px;color:var(--ink-soft);font-family:'Inter',sans-serif;}
+
+  /* ---------- note strip ---------- */
+  .strip{
+    background:var(--coral);color:var(--ink);
+    padding:16px 0;
+  }
+  .strip .wrap{display:flex;align-items:center;gap:12px;font-size:14px;font-weight:600;justify-content:center;text-align:center;}
+
+  /* ---------- footer ---------- */
+  footer{border-top:1px solid var(--line);padding:16px 0 10px;}
+  .foot-grid{display:grid;grid-template-columns:5fr 2fr 3fr;gap:0;align-items:center;}
+  .foot-grid > div{padding:0 34px;position:relative;}
+  .foot-grid > div:first-child{padding-left:0;}
+  .foot-grid > div:not(:first-child)::before{content:'';position:absolute;left:0;top:13%;bottom:13%;width:1px;background:var(--line);}
+  .foot-badge-group{display:flex;align-items:center;gap:23px;}
+  .foot-badge-divider{width:1px;height:74%;align-self:center;background:var(--line);flex-shrink:0;}
+  footer h4{font-family:'Courier Prime',monospace;font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--sage-dark);margin-bottom:12px;}
+  footer p, footer a{font-size:14px;color:var(--ink-soft);line-height:1.6;text-decoration:none;}
+  .visit-compact p{margin:5px 0;}
+  .visit-compact p:first-of-type{margin-top:0;}
+  .foot-bottom{margin-top:19px;padding-top:11px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-soft);display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;}
+  .foot-tagline{font-family:'Courier Prime',monospace;text-transform:uppercase;letter-spacing:.12em;font-size:10.5px;color:var(--ink-soft);text-align:center;}
+  .foot-social{display:flex;align-items:center;gap:16px;justify-self:end;}
+
+  /* ---------- order modal ---------- */
+  .overlay{
+    position:fixed;inset:0;background:rgba(43,38,32,0.5);
+    display:none;align-items:flex-start;justify-content:center;
+    padding:40px 20px;z-index:100;overflow-y:auto;
+  }
+  .overlay.open{display:flex;}
+  .modal{
+    background:var(--cream);border-radius:6px;max-width:960px;width:100%;
+    display:grid;grid-template-columns:1.3fr 1fr;overflow:hidden;
+    box-shadow:0 40px 80px -30px rgba(0,0,0,0.4);
+    animation:pop .25s ease;
+  }
+  @keyframes pop{from{opacity:0;transform:translateY(10px) scale(.98);}to{opacity:1;transform:none;}}
+  .modal-main{padding:34px 36px 30px;}
+  .modal-close{position:absolute;top:18px;right:18px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);}
+  .modal{position:relative;}
+  .modal:focus{outline:none;}
+  .progress{display:flex;gap:6px;margin-bottom:26px;}
+  .progress div{height:3px;flex:1;background:var(--line);border-radius:3px;overflow:hidden;}
+  .progress div i{display:block;height:100%;width:0%;background:var(--sage-dark);transition:width .25s;}
+  .modal-main h3{font-size:22px;margin-bottom:4px;}
+  .modal-main .sub{font-size:13px;color:var(--ink-soft);margin-bottom:22px;}
+  .fstep{display:none;}
+  .fstep.active{display:block;animation:fade .2s ease;}
+  @keyframes fade{from{opacity:0;}to{opacity:1;}}
+
+  .optgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+  .optcard{
+    border:1px solid var(--line);border-radius:4px;padding:12px 14px;cursor:pointer;
+    font-size:13.5px;transition:border-color .15s, background .15s;background:var(--paper);
+    text-align:left;font-family:inherit;width:100%;display:block;
+  }
+  .optcard b{display:block;font-family:'Fraunces',serif;font-size:15px;font-weight:500;margin-bottom:2px;}
+  .optcard span{color:var(--ink-soft);font-size:12.5px;}
+  .optcard.sel{border-color:var(--sage-dark);background:#EEF1E9;}
+  .optcard.disabled{opacity:.4;cursor:not-allowed;}
+  .cart-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+  .cart-item img{width:48px;height:48px;object-fit:cover;border-radius:4px;flex-shrink:0;}
+  .cart-item-info{flex:1;min-width:0;}
+  .cart-item-name{font-family:'Fraunces',serif;font-size:15px;}
+  .cart-item-price{font-size:12.5px;color:var(--ink-soft);}
+  .cart-item-actions{display:flex;align-items:center;gap:8px;}
+  .qty-stepper{display:flex;align-items:center;gap:8px;}
+  .qty-stepper button{width:26px;height:26px;border:1px solid var(--line);background:var(--paper);border-radius:4px;cursor:pointer;font-size:14px;line-height:1;color:var(--ink);}
+  .qty-stepper button:hover{background:var(--line);}
+  .qty-stepper span{min-width:16px;text-align:center;font-size:14px;}
+  .cart-item-remove{background:none;border:none;color:var(--ink-soft);font-size:12px;cursor:pointer;text-decoration:underline;margin-left:6px;}
+  .cart-empty{color:var(--ink-soft);font-size:14px;padding:20px 0;text-align:center;}
+
+  label.field{display:block;font-size:12.5px;font-weight:600;margin:0 0 6px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
+  input[type=text], input[type=email], input[type=tel], input[type=date], input[type=time], select, textarea{
+    width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:4px;
+    background:var(--paper);font-family:'Inter',sans-serif;font-size:14px;margin-bottom:16px;color:var(--ink);
+  }
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--sage);outline-offset:1px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+  .cutoff-note{
+    display:flex;gap:10px;align-items:flex-start;
+    background:#FBF0E8;border:1px solid #EAD3BF;border-radius:4px;
+    padding:12px 14px;font-size:13px;color:#7A5230;margin-bottom:18px;line-height:1.5;
+  }
+  .cutoff-note.blocked{background:#FBEAE8;border-color:#E9B9B2;color:#8C3B2E;}
+
+  .modal-actions{display:flex;justify-content:space-between;margin-top:24px;}
+
+  /* docket sidebar */
+  .docket{
+    background:repeating-linear-gradient(var(--paper),var(--paper));
+    border-left:1px dashed var(--line);
+    padding:30px 28px;font-family:'Courier Prime',monospace;font-size:12.5px;color:var(--ink);
+    display:flex;flex-direction:column;
+  }
+  .docket .dk-head{text-align:center;margin-bottom:14px;border-bottom:1px dashed var(--line);padding-bottom:14px;}
+  .docket .dk-head b{font-family:'Fraunces',serif;font-size:18px;display:block;font-weight:600;}
+  .docket .dk-row{display:flex;justify-content:space-between;margin-bottom:8px;gap:8px;}
+  .docket .dk-row span:last-child{overflow-wrap:anywhere;min-width:0;}
+  .docket .dk-row span:last-child{text-align:right;}
+  .docket .dk-label{color:var(--ink-soft);}
+  .docket .dk-line{border-top:1px dashed var(--line);margin:14px 0;}
+  .docket .dk-total{display:flex;justify-content:space-between;font-size:15px;font-weight:700;margin-top:auto;padding-top:14px;border-top:1px dashed var(--line);}
+  .docket .dk-empty{color:var(--ink-soft);text-align:center;margin-top:30px;font-style:italic;}
+
+  .confirm-wrap{text-align:center;padding:20px 10px 6px;}
+  .confirm-wrap .stamp{
+    width:64px;height:64px;border-radius:50%;background:var(--sage-dark);color:var(--cream);
+    display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:28px;
+  }
+
+  @media(max-width:860px){
+    .hero-art-wrap{width:100%;margin-left:0;}
+    .hero-grid{grid-template-columns:1fr;}
+    .hero h1{font-size:38px;}
+    .hero-badge{width:80px;height:80px;right:-14px;bottom:-14px;}
+    .cakegrid{grid-template-columns:1fr 1fr;}
+    .steps{grid-template-columns:1fr 1fr;}
+    .foot-grid{grid-template-columns:1fr;gap:26px;}
+    .foot-grid > div{padding:0;}
+    .foot-grid > div::before{display:none;}
+    .foot-badge-group{flex-direction:column;align-items:flex-start;gap:14px;}
+    .foot-badge-divider{display:none;}
+    .foot-bottom{grid-template-columns:1fr;justify-items:center;text-align:center;gap:10px;}
+    .foot-social{justify-self:center;}
+    .navlinks{display:none;}
+    .modal{grid-template-columns:1fr;}
+    .docket{border-left:none;border-top:1px dashed var(--line);}
+    .row2, .optgrid{grid-template-columns:1fr;}
+  }
+
+  @media(max-width:600px){
+    .overlay{padding:12px;}
+    .modal-main{padding:24px 18px 20px;}
+    .docket{padding:22px 18px;}
+    .cart-item{flex-wrap:wrap;}
+    .cart-item-info{min-width:140px;}
+    .cart-item-actions{
+      flex-basis:100%;margin-left:58px;margin-top:8px;justify-content:space-between;
+    }
+    .hero-art{
+      aspect-ratio:4/3;
+    }
+    .wrap{
+      padding-left:18px;
+      padding-right:18px;
+    }
+    .nav{
+      padding:14px 18px;
+      gap:12px;
+    }
+    .logo{
+      font-size:20px;
+    }
+    .logo-full{display:none;}
+    .logo-short{display:inline;}
+    .nav > .btn{
+      font-size:12.5px;
+      padding:9px 14px;
+      white-space:nowrap;
+    }
+    .strip{
+      padding:11px 0;
+    }
+    .strip .wrap{
+      font-size:12.5px;
+    }
+    .sec-hero{
+      padding-top:28px;
+      padding-bottom:28px;
+    }
+    .hero-grid{
+      gap:28px;
+    }
+    .hero h1{
+      font-size:34px;
+      line-height:1.05;
+    }
+    .hero p.lead{
+      font-size:15.5px;
+    }
+    .hero-ctas{
+      flex-wrap:wrap;
+    }
+    .cakegrid{
+      grid-template-columns:1fr;
+      row-gap:34px;
+    }
+    .cake-body{
+      margin-top:16px;
+    }
+    .cake-body p.desc{
+      margin-bottom:16px;
+    }
+    .steps{
+      grid-template-columns:1fr;
+      gap:24px;
+    }
+    .sec-how{
+      padding-top:32px;
+      padding-bottom:32px;
+    }
+    #visit > .wrap{
+      grid-template-columns:1fr !important;
+      gap:24px !important;
+    }
+    #visit h2{
+      font-size:29px !important;
+    }
+    .visit-row{
+      margin-bottom:14px;
+    }
+    .sec-visit{
+      padding-top:30px;
+      padding-bottom:30px;
+    }
+    .foot-grid{
+      gap:20px;
+    }
+    .foot-badge-group{
+      gap:12px;
+    }
+    #footerBadge{
+      width:94px !important;
+      height:94px !important;
+    }
+  }
+
+  @media(max-width:380px){
+    .hero-ctas{
+      flex-direction:column;
+      align-items:stretch;
+    }
+    .hero-ctas .btn{
+      width:100%;
+      text-align:center;
+    }
+  }
+</style>
+<!-- The hasMenu/MenuItem block below is a static, crawlable copy of the
+     cake menu (name/description/price only, no images) — search engines
+     see it immediately from the raw page source, without needing to run
+     any JavaScript. This matters because the actual cake grid customers
+     see is rendered client-side by buildCakeGrid() from the CAKES array
+     further down this file, so without this block, the menu content
+     wouldn't exist in the page until a crawler executes JS (which Google
+     does, eventually, but not instantly, and many other tools/crawlers
+     don't at all). This is now a third copy of the same basic cake data,
+     alongside the CAKES array here and its own copy in
+     create-checkout-session.js — if you add, remove, rename, or
+     reprice a cake, update all three, or this listing will drift out
+     of sync with what's actually for sale. -->
+<!-- postalCode and geo (latitude/longitude) are deliberately left out of
+     the address/business data below rather than guessed at — an
+     incorrect postcode or, worse, incorrect map coordinates in
+     structured data can actively mislead customers and mapping tools,
+     which is worse than simply omitting the field. If you want these
+     added: get the postcode from a real NZ postcode lookup for 114
+     Ocean View Road, Oneroa, and get precise coordinates by right-
+     clicking the business's exact location in Google Maps and copying
+     the lat/long shown — then add "postalCode" to the address object
+     below, and a "geo": { "@type": "GeoCoordinates", "latitude": ...,
+     "longitude": ... } field alongside it. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Bakery",
+  "@id": "https://www.theoldflourshop.co.nz/#business",
+  "name": "The Old Flour Shop Bakery",
+  "description": "A small-batch bakery in a restored old building in Oneroa, Waiheke Island, specialising in pre-order celebration cakes for pickup or delivery across the island.",
+  "image": "https://www.theoldflourshop.co.nz/images/og-cover.jpg",
+  "url": "https://www.theoldflourshop.co.nz/",
+  "telephone": "+64273399264",
+  "email": "theoldflourshop@gmail.com",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "114 Ocean View Road",
+    "addressLocality": "Oneroa",
+    "addressRegion": "Auckland",
+    "addressCountry": "NZ"
+  },
+  "areaServed": {
+    "@type": "Place",
+    "name": "Waiheke Island"
+  },
+  "openingHoursSpecification": [
+    {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+      "opens": "07:30",
+      "closes": "15:00"
+    }
+  ],
+  "servesCuisine": "Bakery",
+  "priceRange": "$$",
+  "sameAs": [
+    "https://www.instagram.com/theoldflourshopbakery",
+    "https://www.facebook.com/profile.php?id=61591520849405"
+  ],
+  "hasMenu": {
+    "@type": "Menu",
+    "name": "Cake menu",
+    "hasMenuSection": {
+      "@type": "MenuSection",
+      "name": "Cakes",
+      "hasMenuItem": [
+        {
+          "@type": "MenuItem",
+          "name": "Chocolate Celebration Cake",
+          "description": "Layers of dark chocolate sponge and buttercream, finished naked style with a piped message on top — perfect for birthdays.",
+          "offers": { "@type": "Offer", "price": "120", "priceCurrency": "NZD" }
+        },
+        {
+          "@type": "MenuItem",
+          "name": "Raspberry Cheesecake",
+          "description": "Baked New York-style cheesecake with a deep golden crust, topped with fresh raspberry compote.",
+          "offers": { "@type": "Offer", "price": "125", "priceCurrency": "NZD" }
+        },
+        {
+          "@type": "MenuItem",
+          "name": "Chocolate Marquise",
+          "description": "Rich chocolate marquise topped with soft caramel and a crown of torched meringue. Deeply chocolatey and indulgent.",
+          "offers": { "@type": "Offer", "price": "130", "priceCurrency": "NZD" }
+        },
+        {
+          "@type": "MenuItem",
+          "name": "Tiramisu Cake",
+          "description": "Layers of coffee soaked sponge and creamy mascarpone, finished with a generous dusting of cocoa. Rich, silky and classic.",
+          "offers": { "@type": "Offer", "price": "115", "priceCurrency": "NZD" }
+        },
+        {
+          "@type": "MenuItem",
+          "name": "Lemon Mousse Cake",
+          "description": "Silky lemon mousse layered with bright lemon curd over a delicate crumb base. Fresh, light and beautifully tart.",
+          "offers": { "@type": "Offer", "price": "120", "priceCurrency": "NZD" }
+        },
+        {
+          "@type": "MenuItem",
+          "name": "Orange & Almond Cake",
+          "description": "A beautifully moist orange and almond cake made with whole oranges and ground almonds for a bright, fresh citrus flavour.",
+          "offers": { "@type": "Offer", "price": "120", "priceCurrency": "NZD" }
+        },
+        {
+          "@type": "MenuItem",
+          "name": "Passionfruit Cheesecake",
+          "description": "Baked New York-style cheesecake with a deep golden crust, topped with fresh passionfruit pulp.",
+          "offers": { "@type": "Offer", "price": "125", "priceCurrency": "NZD" }
+        },
+        {
+          "@type": "MenuItem",
+          "name": "Lemon Lover Cake",
+          "description": "Layered lemon sponge with a bright lemon curd filling, fully frosted in buttercream and finished with fresh zest.",
+          "offers": { "@type": "Offer", "price": "115", "priceCurrency": "NZD" }
+        },
+        {
+          "@type": "MenuItem",
+          "name": "Raspberry Crumble Cake",
+          "description": "Buttery vanilla sponge studded with fresh raspberries under a golden brown sugar crumble.",
+          "offers": { "@type": "Offer", "price": "100", "priceCurrency": "NZD" }
+        }
+      ]
+    }
+  }
+}
+</script>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <div class="logo">
+      <span class="logo-full">The Old Flour Shop Bakery</span>
+      <span class="logo-short">The Old Flour Shop</span>
+    </div>
+    <nav class="navlinks">
+      <a href="#cakes">Cakes</a>
+      <a href="#how">How it works</a>
+      <a href="#visit">Visit</a>
+    </nav>
+    <button class="btn" id="headerCartBtn" onclick="openOrder()">Order a cake</button>
+  </div>
+</header>
+
+<div class="strip">
+  <div class="wrap">Cake orders require at least 48 hours' notice.</div>
+</div>
+
+<section class="hero sec-hero">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow">Oneroa, Waiheke Island</p>
+      <h1>Celebration Cakes on Waiheke Island</h1>
+      <p style="font-family:'Fraunces',serif;font-style:italic;font-size:19px;color:var(--sage-dark);margin:0 0 16px;">Something sweet for something special.</p>
+      <p class="lead">From birthday cakes to celebration centrepieces, order ahead from our small batch menu. Collect from our Oneroa bakery or have your cake delivered across Waiheke Island.</p>
+      <div class="hero-ctas">
+        <button class="btn btn-coral" id="heroCartBtn" onclick="openOrder()">Start an order</button>
+        <a class="btn btn-ghost" href="#cakes">See the cake menu</a>
+      </div>
+    </div>
+    <div class="hero-art-wrap">
+      <div class="hero-art" id="heroArt">
+        <img id="heroImg" src="images/heroImg.webp" width="1000" height="1000" alt="The Old Flour Shop Bakery storefront" fetchpriority="high" decoding="async" style="width:100%;height:100%;object-fit:cover;">
+      </div>
+      <img class="hero-badge" id="heroBadge" width="500" height="500" alt="The Old Flour Shop Bakery badge logo">
+    </div>
+  </div>
+</section>
+
+<section id="cakes" class="sec-cakes" style="background:#EEF0E7;">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">The menu</p>
+        <h2 style="margin-top:8px;">Cakes worth planning ahead for</h2>
+        <p style="color:var(--ink-soft);font-size:12.5px;opacity:0.8;margin-top:4px;">All whole cakes serve approximately 10–14.</p>
+      </div>
+    </div>
+    <div class="cakegrid" id="cakeGrid">
+    <div class="cake-card">
+      <div class="cake-thumb"><img src="images/chocolate-cake.webp" alt="Chocolate Celebration Cake" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-body">
+        <h3>Chocolate Celebration Cake</h3>
+        <div class="cake-tags"><span class="tag">House favourite</span><span class="tag">Custom Message Available</span></div>
+        <p class="desc" style="flex:none;">Layers of dark chocolate sponge and buttercream, finished naked style with a piped message on top — perfect for birthdays.</p>
+        <div class="cake-foot">
+          <div class="price-from">$120.00</div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('chocolate-cake')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><img src="images/raspberry-cheesecake.webp" alt="Raspberry Cheesecake" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-body">
+        <h3>Raspberry Cheesecake</h3>
+        <div class="cake-tags"><span class="tag">No Added Gluten Option</span></div>
+        <p class="desc" style="flex:none;">Baked New York-style cheesecake with a deep golden crust, topped with fresh raspberry compote.</p>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin:8px 0 0;">
+           <input type="checkbox" id="cardGf-raspberry-cheesecake">
+           Prepare without added gluten
+         </label>
+        <div class="cake-foot">
+          <div class="price-from">$125.00</div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('raspberry-cheesecake')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><img src="images/chocolate-marquise.webp" alt="Chocolate Marquise" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-body">
+        <h3>Chocolate Marquise</h3>
+        <div class="cake-tags"><span class="tag">Bestseller</span></div>
+        <p class="desc" style="flex:none;">Rich chocolate marquise topped with soft caramel and a crown of torched meringue. Deeply chocolatey and indulgent.</p>
+        <div class="cake-foot">
+          <div class="price-from">$130.00</div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('chocolate-marquise')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><img src="images/tiramisu-cake.webp" alt="Tiramisu Cake" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-body">
+        <h3>Tiramisu Cake</h3>
+        <div class="cake-tags"><span class="tag">Coffee</span><span class="tag">House favourite</span></div>
+        <p class="desc" style="flex:none;">Layers of coffee soaked sponge and creamy mascarpone, finished with a generous dusting of cocoa. Rich, silky and classic.</p>
+        <div class="cake-foot">
+          <div class="price-from">$115.00</div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('tiramisu-cake')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><img src="images/lemon-velvet.webp" alt="Lemon Mousse Cake" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-body">
+        <h3>Lemon Mousse Cake</h3>
+        <div class="cake-tags"><span class="tag">No Added Gluten Option</span></div>
+        <p class="desc" style="flex:none;">Silky lemon mousse layered with bright lemon curd over a delicate crumb base. Fresh, light and beautifully tart.</p>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin:8px 0 0;">
+           <input type="checkbox" id="cardGf-lemon-velvet">
+           Prepare without added gluten
+         </label>
+        <div class="cake-foot">
+          <div class="price-from">$120.00</div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('lemon-velvet')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><img src="images/orange-almond.webp" alt="Orange & Almond Cake" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-body">
+        <h3>Orange & Almond Cake</h3>
+        <div class="cake-tags"><span class="tag">No Added Gluten</span><span class="tag">Contains Nuts</span></div>
+        <p class="desc" style="flex:none;">A beautifully moist orange and almond cake made with whole oranges and ground almonds for a bright, fresh citrus flavour.</p>
+        <div class="cake-foot">
+          <div class="price-from">$120.00</div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('orange-almond')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><img src="images/passionfruit-cheesecake.webp" alt="Passionfruit Cheesecake" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-body">
+        <h3>Passionfruit Cheesecake</h3>
+        <div class="cake-tags"><span class="tag">Bestseller</span><span class="tag">No Added Gluten Option</span></div>
+        <p class="desc" style="flex:none;">Baked New York-style cheesecake with a deep golden crust, topped with fresh passionfruit pulp.</p>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin:8px 0 0;">
+           <input type="checkbox" id="cardGf-passionfruit-cheesecake">
+           Prepare without added gluten
+         </label>
+        <div class="cake-foot">
+          <div class="price-from">$125.00</div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('passionfruit-cheesecake')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><img src="images/lemon-lover-cake.webp" alt="Lemon Lover Cake" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-body">
+        <h3>Lemon Lover Cake</h3>
+        <div class="cake-tags"><span class="tag">Custom Message Available</span></div>
+        <p class="desc" style="flex:none;">Layered lemon sponge with a bright lemon curd filling, fully frosted in buttercream and finished with fresh zest.</p>
+        <div class="cake-foot">
+          <div class="price-from">$115.00</div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('lemon-lover-cake')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><img src="images/raspberry-crumble.webp" alt="Raspberry Crumble Cake" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-body">
+        <h3>Raspberry Crumble Cake</h3>
+        <div class="cake-tags"><span class="tag">House favourite</span></div>
+        <p class="desc" style="flex:none;">Buttery vanilla sponge studded with fresh raspberries under a golden brown sugar crumble.</p>
+        <div class="cake-foot">
+          <div class="price-from">$100.00</div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('raspberry-crumble')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec-allergen" style="background:#EEF0E7;">
+  <div class="wrap">
+    <details class="allergen-accordion">
+      <summary>Allergen information</summary>
+      <div class="allergen-body">
+        <p style="color:var(--ink-soft);font-size:14px;line-height:1.6;margin:0 0 10px;">Selected cakes can be made without gluten-containing ingredients. Please note that our bakery handles wheat, nuts, dairy, eggs and other allergens in a small shared kitchen, so we cannot guarantee that any product is completely free from allergens or cross-contact.</p>
+        <p style="color:var(--ink-soft);font-size:14px;line-height:1.6;margin:0;">If you have a serious allergy or specific dietary requirement, please contact us before placing your order.</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<section class="how sec-how" id="how">
+  <div class="wrap">
+    <p class="eyebrow">The process</p>
+    <h2 style="margin-top:10px;">How pre-ordering works</h2>
+    <div class="steps">
+      <div class="step"><div class="num">01</div><h3>Pick your cake</h3><p>Choose your favourite from our small-batch cake menu.</p></div>
+      <div class="step"><div class="num">02</div><h3>Choose a date</h3><p>Select pickup or delivery and choose a date at least 48 hours ahead.</p></div>
+      <div class="step"><div class="num">03</div><h3>Pay online</h3><p>Secure your order with card payment at checkout. No surprises on the day.</p></div>
+      <div class="step"><div class="num">04</div><h3>We bake it fresh</h3><p>Your cake is made to order and ready for you at the time you chose.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="visit" class="sec-visit" style="background:var(--cream-2);">
+  <div class="wrap" style="display:grid;grid-template-columns:1fr 1fr;gap:43px;align-items:center;">
+    <div style="border-radius:6px;overflow:hidden;aspect-ratio:1/1;">
+      <img id="visitImg" width="1000" height="1000" style="width:100%;height:100%;object-fit:cover;display:block;" alt="The Old Flour Shop Bakery entrance with Open sign">
+    </div>
+    <div style="position:relative;">
+      <p class="eyebrow">Find Us</p>
+      <h2 style="margin:10px 0 16px;font-size:32px;">Freshly baked in the<br>heart of Oneroa.</h2>
+      <p style="color:var(--ink-soft);line-height:1.6;font-size:15px;margin-bottom:26px;">Pop in for a sandwich, pie, something sweet or a coffee, and collect your pre-ordered cake from our Oneroa bakery.</p>
+      <div class="visit-row">
+        <div class="visit-icon"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
+        <div><p style="margin:0;">114 Ocean View Road</p><p style="margin:0;">Oneroa, Waiheke Island</p></div>
+      </div>
+      <div class="visit-row">
+        <div class="visit-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></div>
+        <div><p style="margin:0;">Open daily</p><p style="margin:0;">7:30am – 3pm</p></div>
+      </div>
+      <div class="visit-row">
+        <div class="visit-icon"><svg viewBox="0 0 24 24"><path d="M4 5c0 8.3 6.7 15 15 15l3-3.5-5-3-2 2c-2.3-1.1-4-2.8-5-5l2-2-3-5L5.5 4C4.7 4 4 4.7 4 5.5z"/></svg></div>
+        <div><p style="margin:0;"><a href="tel:+64273399264">027 339 9264</a></p></div>
+      </div>
+      <div class="visit-row">
+        <div class="visit-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 6l9 7 9-7"/></svg></div>
+        <div><p style="margin:0;"><a href="mailto:theoldflourshop@gmail.com">theoldflourshop@gmail.com</a></p></div>
+      </div>
+      <a class="btn" href="https://maps.google.com/?q=114+Ocean+View+Road+Oneroa+Waiheke+Island" target="_blank" rel="noopener" style="margin-top:10px;">Get directions →</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <div class="foot-badge-group">
+          <img id="footerBadge" width="500" height="500" alt="The Old Flour Shop Bakery badge logo" style="width:104px;height:104px;display:block;flex-shrink:0;">
+          <div class="foot-badge-divider"></div>
+          <div>
+            <p style="font-family:'Fraunces',serif;font-style:italic;font-weight:500;font-size:19px;color:var(--ink);margin:0 0 8px;line-height:1.3;white-space:nowrap;">Old Building. Blooming Good.</p>
+            <p style="max-width:250px;font-size:13.5px;">From flower shop to flour shop, a new bakery in the heart of Oneroa, Waiheke Island.</p>
+          </div>
+        </div>
+      </div>
+      <div>
+        <h4>Shop</h4>
+        <p><a href="#cakes">Cake menu</a></p>
+        <p><a href="#how">How ordering works</a></p>
+        <p><a href="#visit">Find us</a></p>
+      </div>
+      <div class="visit-compact">
+        <h4>Visit</h4>
+        <p>114 Ocean View Road</p>
+        <p>7:30am – 3pm</p>
+        <p><a href="tel:+64273399264">027 339 9264</a></p>
+        <p style="font-size:13px;"><a href="mailto:theoldflourshop@gmail.com">theoldflourshop@gmail.com</a></p>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 The Old Flour Shop Bakery</span>
+      <span class="foot-tagline">Good cake brings people together.</span>
+      <div class="foot-social">
+        <a href="https://www.instagram.com/theoldflourshopbakery" target="_blank" rel="noopener" aria-label="Instagram" style="color:var(--ink-soft);">
+          <svg width="18" height="18" viewBox="0 0 448 512" fill="currentColor"><path d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.6 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z"/></svg>
+        </a>
+        <a href="https://www.facebook.com/profile.php?id=61591520849405" target="_blank" rel="noopener" aria-label="Facebook" style="color:var(--ink-soft);">
+          <svg width="18" height="18" viewBox="0 0 320 512" fill="currentColor"><path d="M279.14 288l14.22-92.66h-88.91v-60.13c0-25.35 12.42-50.06 52.24-50.06h40.42V6.26S260.43 0 225.36 0c-73.22 0-121.08 44.38-121.08 124.72v70.62H22.89V288h81.39v224h100.17V288z"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ORDER MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Order form" tabindex="-1">
+    <button class="modal-close" onclick="closeOrder()" aria-label="Close order form">✕</button>
+    <div class="modal-main">
+      <div class="progress" id="progress">
+        <div><i></i></div><div><i></i></div><div><i></i></div><div><i></i></div>
+      </div>
+
+      <!-- STEP 1: cart -->
+      <div class="fstep active" data-step="1">
+        <h3>Your cart</h3>
+        <p class="sub">Step 1 of 4 — cakes</p>
+        <div id="cartList"></div>
+        <div style="display:flex;gap:10px;align-items:flex-end;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);">
+          <div style="flex:1;">
+            <label class="field" for="selCakeToAdd">Add a cake</label>
+            <select id="selCakeToAdd"></select>
+          </div>
+          <button type="button" class="btn btn-ghost" style="margin-bottom:16px;" onclick="addSelectedToCart()">Add</button>
+        </div>
+        <label id="addGlutenFreeWrap" style="display:none;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);margin-top:-6px;">
+          <input type="checkbox" id="addGlutenFreeCheck">
+          Prepare without added gluten
+        </label>
+      </div>
+
+      <!-- STEP 2: fulfilment + date -->
+      <div class="fstep" data-step="2">
+        <h3>Pickup or delivery</h3>
+        <p class="sub">Step 2 of 4 — when &amp; how</p>
+        <div class="optgrid">
+          <button type="button" class="optcard" id="optPickup" onclick="setFulfil('pickup')">
+            <b>Pickup</b><span>From our Oneroa store, free</span>
+          </button>
+          <button type="button" class="optcard" id="optDelivery" onclick="setFulfil('delivery')">
+            <b>Delivery</b><span>Across Waiheke, from $15</span>
+          </button>
+        </div>
+        <div id="addressWrap" style="display:none;">
+          <label class="field" for="suburb">Suburb / area</label>
+          <select id="suburb" onchange="updateDocket(); refreshNext(); saveDraft();"></select>
+          <label class="field" for="address">Delivery address</label>
+          <input type="text" id="address" placeholder="123 Ocean View Rd, Oneroa" autocomplete="street-address">
+        </div>
+        <div class="cutoff-note" id="cutoffNote" style="display:none;"></div>
+        <label class="field" for="orderDate">Date</label>
+        <input type="date" id="orderDate" onchange="validateDate()">
+        <p id="timeNote" style="font-size:13px;color:var(--ink-soft);margin:-8px 0 4px;"></p>
+      </div>
+
+      <!-- STEP 3: details -->
+      <div class="fstep" data-step="3">
+        <h3>Your details</h3>
+        <p class="sub">Step 3 of 4 — contact &amp; message</p>
+        <div class="row2">
+          <div><label class="field" for="fname">First name</label><input type="text" id="fname" autocomplete="given-name"></div>
+          <div><label class="field" for="lname">Last name</label><input type="text" id="lname" autocomplete="family-name"></div>
+        </div>
+        <div class="row2">
+          <div><label class="field" for="email">Email</label><input type="email" id="email" autocomplete="email"></div>
+          <div><label class="field" for="phone">Phone</label><input type="tel" id="phone" autocomplete="tel"></div>
+        </div>
+        <label class="field" for="message">Order message / cake messages (optional)</label>
+        <textarea id="message" rows="2" maxlength="160" placeholder="e.g. Happy Birthday Wanda!"></textarea>
+        <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 10px;">Ordering more than one cake? Put the cake name before each message, e.g. "Chocolate Cake: Happy 30th Sarah. Lemon Cake: Congratulations Mum."</p>
+        <p id="messageAvailabilityNote" style="font-size:12px;color:var(--ink-soft);margin:-8px 0 12px;"></p>
+        <label class="field" for="notes">Allergies / notes (optional)</label>
+        <textarea id="notes" rows="2" placeholder="Let us know about any allergies or special requests"></textarea>
+      </div>
+
+      <!-- STEP 4: payment -->
+      <div class="fstep" data-step="4">
+        <h3>Review &amp; pay</h3>
+        <p class="sub">Step 4 of 4 — secure payment via Stripe</p>
+        <p style="font-size:14px;color:var(--ink-soft);line-height:1.6;margin-bottom:14px;">Check your order in the docket, then continue to pay securely. You'll enter your card details on Stripe's own secure payment page — we never see or store your card information.</p>
+        <p id="payError" style="display:none;font-size:13px;color:#8C3B2E;background:#FBEAE8;border:1px solid #E9B9B2;border-radius:4px;padding:10px 12px;margin-bottom:14px;"></p>
+      </div>
+
+      <!-- CONFIRMATION -->
+      <div class="fstep" data-step="confirm">
+        <div class="confirm-wrap">
+          <div class="stamp" id="confirmStamp">✓</div>
+          <h3 id="confirmHeading">Checking payment…</h3>
+          <p class="sub" id="confirmSub">We'll see you soon.</p>
+          <button class="btn" onclick="closeOrder()" style="margin-top:14px;">Done</button>
+        </div>
+      </div>
+
+      <div class="modal-actions" id="modalActions">
+        <button class="btn btn-ghost" id="backBtn" onclick="prevStep()">Back</button>
+        <button class="btn" id="nextBtn" onclick="nextStep()" disabled>Continue</button>
+      </div>
+    </div>
+
+    <div class="docket">
+      <div class="dk-head"><b>The Old Flour Shop Bakery</b>ORDER DOCKET</div>
+      <div id="docketBody">
+        <div class="dk-empty">Your order will appear here as you go.</div>
+      </div>
+      <div class="dk-total" id="docketTotal" style="display:none;">
+        <span>TOTAL</span><span id="docketTotalVal">$0.00</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/*
+  IMAGE HOSTING NOTE:
+  Every value below now points to a compressed WebP file in the /images
+  folder (converted from the original embedded base64 photos — 42%
+  smaller, and no longer bloating the HTML itself).
+  These are currently relative paths, so this file and the /images
+  folder must be uploaded together, in the same relative position, to
+  whatever host or CDN serves the live site. Once deployed, these can
+  optionally be changed to absolute URLs, e.g.:
+    "key": "https://cdn.example.com/images/key.webp"
+  No other code needs to change — cakePhotoSrc() and every <img> that
+  reads from this object will work identically either way.
+*/
+const CAKE_PHOTOS = {
+  "chocolate-cake": "images/chocolate-cake.webp",
+  "lemon-lover-cake": "images/lemon-lover-cake.webp",
+  "chocolate-marquise": "images/chocolate-marquise.webp",
+  "tiramisu-cake": "images/tiramisu-cake.webp",
+  "passionfruit-cheesecake": "images/passionfruit-cheesecake.webp",
+  "lemon-velvet": "images/lemon-velvet.webp",
+  "raspberry-cheesecake": "images/raspberry-cheesecake.webp",
+  "orange-almond": "images/orange-almond.webp",
+  "raspberry-crumble": "images/raspberry-crumble.webp",
+};
+</script>
+<script>
+/* ============ EDIT THIS to update the cake menu ============ */
+// This data is source-controlled (edited directly in this file, by you or
+// a developer) — that's what makes it safe to render via innerHTML
+// throughout the site without escaping, unlike customer-entered text
+// (name, message, notes etc.), which is always escaped before display.
+// If cake names/descriptions ever come from an external source (a CMS,
+// an admin form, anything editable by someone other than a trusted
+// developer), that assumption breaks and this would need the same
+// escaping treatment as customer input.
+const CAKES = [
+  {
+    id:'chocolate-cake',
+    name:'Chocolate Celebration Cake',
+    tags:['House favourite','Custom Message Available'],
+    desc:'Layers of dark chocolate sponge and buttercream, finished naked style with a piped message on top — perfect for birthdays.',
+    price:120,
+    photo:'chocolate-cake'
+  },
+  {
+    id:'raspberry-cheesecake',
+    name:'Raspberry Cheesecake',
+    tags:['No Added Gluten Option'],
+    desc:'Baked New York-style cheesecake with a deep golden crust, topped with fresh raspberry compote.',
+    price:125,
+    photo:'raspberry-cheesecake'
+  },
+  {
+    id:'chocolate-marquise',
+    name:'Chocolate Marquise',
+    tags:['Bestseller'],
+    desc:'Rich chocolate marquise topped with soft caramel and a crown of torched meringue. Deeply chocolatey and indulgent.',
+    price:130,
+    photo:'chocolate-marquise'
+  },
+  {
+    id:'tiramisu-cake',
+    name:'Tiramisu Cake',
+    tags:['Coffee','House favourite'],
+    desc:'Layers of coffee soaked sponge and creamy mascarpone, finished with a generous dusting of cocoa. Rich, silky and classic.',
+    price:115,
+    photo:'tiramisu-cake'
+  },
+  {
+    id:'lemon-velvet',
+    name:'Lemon Mousse Cake',
+    tags:['No Added Gluten Option'],
+    desc:'Silky lemon mousse layered with bright lemon curd over a delicate crumb base. Fresh, light and beautifully tart.',
+    price:120,
+    photo:'lemon-velvet'
+  },
+  {
+    id:'orange-almond',
+    name:'Orange & Almond Cake',
+    tags:['No Added Gluten','Contains Nuts'],
+    desc:'A beautifully moist orange and almond cake made with whole oranges and ground almonds for a bright, fresh citrus flavour.',
+    price:120,
+    photo:'orange-almond'
+  },
+  {
+    id:'passionfruit-cheesecake',
+    name:'Passionfruit Cheesecake',
+    tags:['Bestseller','No Added Gluten Option'],
+    desc:'Baked New York-style cheesecake with a deep golden crust, topped with fresh passionfruit pulp.',
+    price:125,
+    photo:'passionfruit-cheesecake'
+  },
+  {
+    id:'lemon-lover-cake',
+    name:'Lemon Lover Cake',
+    tags:['Custom Message Available'],
+    desc:'Layered lemon sponge with a bright lemon curd filling, fully frosted in buttercream and finished with fresh zest.',
+    price:115,
+    photo:'lemon-lover-cake'
+  },
+  {
+    id:'raspberry-crumble',
+    name:'Raspberry Crumble Cake',
+    tags:['House favourite'],
+    desc:'Buttery vanilla sponge studded with fresh raspberries under a golden brown sugar crumble.',
+    price:100,
+    photo:'raspberry-crumble'
+  },
+];
+const DELIVERY_ZONES = [
+  { fee:15, suburbs:['Oneroa','Blackpool','Little Oneroa'] },
+  { fee:20, suburbs:['Surfdale','Palm Beach','Ostend'] },
+  { fee:25, suburbs:['Mudbrick Vineyard','Cable Bay Vineyard','Wild on Waiheke','Stoneyridge Vineyard','Te Motu Estate','Tantalus Estate','Onetangi'] },
+];
+const CUTOFF_HOURS = 48;
+const MAX_BOOKING_MONTHS_AHEAD = 6; // must match MAX_BOOKING_MONTHS_AHEAD in create-checkout-session.js
+const MAX_ITEM_QTY_CLIENT = 20; // must match MAX_ITEM_QTY in create-checkout-session.js — the backend is authoritative, this is just for immediate UI feedback
+// Dates the bakery is closed / not taking orders — checked here for
+// immediate feedback, and separately (authoritatively) in
+// create-checkout-session.js. Keep both lists identical. Format: 'YYYY-MM-DD'.
+// NOTE: neither this list nor anything else in this file limits how many
+// cakes can be booked for a single open day. Daily production capacity
+// is not enforced anywhere yet — if it's ever needed, it belongs in the
+// backend (create-checkout-session.js), never here. The frontend is a
+// convenience layer only; anything relied on for real business rules
+// has to live where it can't be bypassed by a direct request.
+const BLACKOUT_DATES = ['2026-12-25', '2027-01-01'];
+/* ============================================================ */
+
+function fmt(n){return '$' + n.toFixed(2);}
+
+function cakePhotoSrc(key){
+  return (typeof CAKE_PHOTOS !== 'undefined' && CAKE_PHOTOS[key]) ? CAKE_PHOTOS[key] : '';
+}
+
+// The #cakeGrid div already contains real, static HTML for all 9 cakes
+// directly in the page source (see index.html) — so search engines and
+// any non-JS crawler see genuine cake names/descriptions/prices
+// immediately, without needing to run this function at all. This
+// function then replaces that static content with an identical-looking
+// version that has working onclick handlers, giving real visitors the
+// interactive "Add to cart" behaviour. If you add/remove/edit a cake in
+// the CAKES array below, the static HTML in index.html's #cakeGrid also
+// needs updating to match, or the two will drift apart — the static
+// version is what crawlers see; this function is what visitors get once
+// JS runs.
+function buildCakeGrid(){
+  const grid = document.getElementById('cakeGrid');
+  grid.innerHTML = CAKES.map(c => {
+    const gfRow = c.tags.includes('No Added Gluten Option')
+      ? `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin:8px 0 0;">
+           <input type="checkbox" id="cardGf-${c.id}">
+           Prepare without added gluten
+         </label>`
+      : '';
+    return `
+    <div class="cake-card">
+      <div class="cake-thumb"><img src="${cakePhotoSrc(c.photo)}" alt="${c.name}" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-body">
+        <h3>${c.name}</h3>
+        <div class="cake-tags">${c.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+        <p class="desc" style="flex:none;">${c.desc}</p>
+        ${gfRow}
+        <div class="cake-foot">
+          <div class="price-from">${fmt(c.price)}</div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('${c.id}')">Add to cart</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function addCakeFromGrid(cakeId){
+  const cb = document.getElementById('cardGf-' + cakeId);
+  const glutenFree = !!(cb && cb.checked);
+  openOrder(cakeId, glutenFree);
+  if(cb) cb.checked = false; // reset so a later "Add to cart" on this same card doesn't silently reuse a stale choice
+}
+buildCakeGrid();
+/* heroImg, heroBadge and visitImg below now also load from /images
+   as WebP files rather than embedded base64 — same note as above. */
+document.getElementById('heroBadge').src = 'images/heroBadge.webp';
+document.getElementById('footerBadge').src = document.getElementById('heroBadge').src;
+document.getElementById('visitImg').src = 'images/visitImg.webp';
+
+/* -------- order flow state -------- */
+let cart = []; // [{cakeId, qty}]
+let state = { step:1, fulfil:null, date:null, time:null, paying:false,
+  fname:'',lname:'',email:'',phone:'',message:'',notes:'' };
+
+// All date/cutoff logic below is deliberately anchored to New Zealand
+// time (Pacific/Auckland), not the browser's or server's own clock —
+// a customer or server running in a different timezone must still see
+// the same cutoff a Waiheke-based customer would. NZ_TZ_OFFSET_NOTE:
+// we get NZ wall-clock time via Intl.DateTimeFormat, then represent it
+// using Date's UTC fields purely as a convenient calendar-math frame —
+// no real UTC conversion is implied.
+function nzNowAsUTC(){
+  const fmt = new Intl.DateTimeFormat('en-NZ', {
+    timeZone: 'Pacific/Auckland',
+    year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
+  });
+  const p = Object.fromEntries(fmt.formatToParts(new Date()).map(x => [x.type, x.value]));
+  // "24" from hour12:false formatting at midnight prints as "24"; normalise to 0.
+  const hour = p.hour === '24' ? 0 : Number(p.hour);
+  return new Date(Date.UTC(Number(p.year), Number(p.month)-1, Number(p.day), hour, Number(p.minute), Number(p.second)));
+}
+
+function minOrderDate(){
+  // The earliest bookable calendar day must have its full 24 hours
+  // (from NZ midnight onward — the earliest a pickup could realistically
+  // be collected) sit at or beyond now + CUTOFF_HOURS. If we instead
+  // floored to the start of whatever day "now + 48h" happens to fall on,
+  // an early pickup that same day could end up with less than the full
+  // 48 hours' notice — so when the cutoff doesn't land exactly on
+  // midnight, the minimum bookable day rolls forward to the next one.
+  const now = nzNowAsUTC();
+  const cutoff = new Date(now.getTime() + CUTOFF_HOURS * 3600 * 1000);
+  const atMidnight = cutoff.getUTCHours()===0 && cutoff.getUTCMinutes()===0 && cutoff.getUTCSeconds()===0;
+  let minDate = new Date(Date.UTC(cutoff.getUTCFullYear(), cutoff.getUTCMonth(), cutoff.getUTCDate(), 0, 0, 0));
+  if(!atMidnight){ minDate = new Date(minDate.getTime() + 24*3600*1000); }
+  return minDate;
+}
+function maxOrderDate(){
+  // The furthest-ahead bookable date — stops someone booking (or an
+  // automated request hitting the backend) for, say, three years out.
+  // JS Date normalises month overflow into the following year(s)
+  // automatically, so this is correct across year boundaries with no
+  // special-casing needed.
+  const now = nzNowAsUTC();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + MAX_BOOKING_MONTHS_AHEAD, now.getUTCDate(), 0, 0, 0));
+}
+function toInputDate(d){
+  // d is our NZ-wall-clock-in-UTC-fields frame (see nzNowAsUTC above) —
+  // read it back with the matching UTC getters, not toISOString(), which
+  // would re-introduce a real UTC conversion and shift the calendar date.
+  const y = d.getUTCFullYear();
+  const mo = String(d.getUTCMonth()+1).padStart(2,'0');
+  const day = String(d.getUTCDate()).padStart(2,'0');
+  return `${y}-${mo}-${day}`;
+}
+function prettyDate(dateStr){
+  // dateStr is a plain "YYYY-MM-DD" NZ calendar date (not a Date object —
+  // deliberately, to avoid any timezone re-interpretation at format time).
+  // Built and formatted using the same local frame throughout, so the
+  // displayed day always matches the calendar day we were actually given,
+  // regardless of the browser's own timezone offset.
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  const localDate = new Date(y, mo-1, d);
+  return localDate.toLocaleDateString('en-NZ', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+}
+
+function cakeById(id){ return CAKES.find(c => c.id === id); }
+
+function offersGlutenFreeOption(cakeId){
+  const c = cakeById(cakeId);
+  return !!(c && c.tags && c.tags.includes('No Added Gluten Option'));
+}
+
+// ---------------------------------------------------------------------
+// DRAFT PERSISTENCE
+// The entire in-progress order (cart, fulfilment, date, address, contact
+// details) is saved to sessionStorage on every meaningful change, and
+// restored whenever the order modal is opened — whether that's after an
+// ordinary page refresh, after cancelling on Stripe's page, or simply
+// after the customer closed the modal partway through and reopened it.
+// It's deliberately NOT restored on a completely fresh visit with no
+// prior activity this tab session (there's nothing to restore), and is
+// cleared the moment an order is actually paid for.
+// ---------------------------------------------------------------------
+const DRAFT_KEY = 'ofs_draft_order';
+
+function saveDraft(){
+  try{
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify({
+      cart,
+      fulfil: state.fulfil,
+      date: state.date,
+      time: state.time,
+      suburb: document.getElementById('suburb') ? document.getElementById('suburb').value : '',
+      address: document.getElementById('address') ? document.getElementById('address').value : '',
+      fname: document.getElementById('fname') ? document.getElementById('fname').value : '',
+      lname: document.getElementById('lname') ? document.getElementById('lname').value : '',
+      email: document.getElementById('email') ? document.getElementById('email').value : '',
+      phone: document.getElementById('phone') ? document.getElementById('phone').value : '',
+      message: document.getElementById('message') ? document.getElementById('message').value : '',
+      notes: document.getElementById('notes') ? document.getElementById('notes').value : ''
+    }));
+  }catch(e){ /* private browsing etc — fine to skip */ }
+}
+
+function clearDraft(){
+  try{ sessionStorage.removeItem(DRAFT_KEY); }catch(e){}
+}
+
+// Data restored from sessionStorage is treated as untrusted input, same
+// as anything else that didn't just come directly from our own code in
+// this page load — a user could hand-edit it via devtools. None of this
+// is a payment-security concern (the backend independently validates
+// everything before any money moves), but restoring it into the cart
+// and form fields without checking it first would be sloppy. Every
+// field is re-validated/clamped against the real cake list and sane
+// bounds before it's trusted.
+// Shared by addToCart() and sanitizeCartArray() so the two can't drift
+// apart over time — both "a cake being added right now" and "a cake
+// coming back out of a restored draft" go through exactly the same
+// validation: unknown cake id, non-finite/zero/negative quantity, or a
+// glutenFree request for a cake that doesn't offer it are all rejected
+// the same way in both places. Returns null if the item isn't valid.
+function resolveCartItem(cakeId, qty, glutenFree){
+  if(!cakeById(cakeId)) return null;
+  qty = Math.floor(Number(qty));
+  if(!Number.isFinite(qty) || qty < 1) return null;
+  qty = Math.min(qty, MAX_ITEM_QTY_CLIENT);
+  glutenFree = !!glutenFree && offersGlutenFreeOption(cakeId);
+  return { cakeId, qty, glutenFree };
+}
+
+function sanitizeCartArray(rawCart){
+  if(!Array.isArray(rawCart)) return [];
+  const merged = new Map(); // key: cakeId|glutenFree -> item, so any duplicate/tampered entries re-merge safely
+  rawCart.forEach(raw => {
+    if(!raw || typeof raw.cakeId !== 'string') return;
+    const resolved = resolveCartItem(raw.cakeId, raw.qty, raw.glutenFree);
+    if(!resolved) return;
+    const key = resolved.cakeId + '|' + resolved.glutenFree;
+    if(merged.has(key)){ merged.get(key).qty = Math.min(merged.get(key).qty + resolved.qty, MAX_ITEM_QTY_CLIENT); }
+    else{ merged.set(key, resolved); }
+  });
+  return Array.from(merged.values());
+}
+
+function isValidSuburb(suburb){
+  return DELIVERY_ZONES.some(z => z.suburbs.includes(suburb));
+}
+
+function loadDraftIfAny(){
+  let saved;
+  try{ saved = sessionStorage.getItem(DRAFT_KEY); }catch(e){ return null; }
+  if(!saved) return null;
+  let data;
+  try{ data = JSON.parse(saved); }catch(e){ return null; }
+  if(!data || typeof data !== 'object') return null;
+  const sanitizedCart = sanitizeCartArray(data.cart);
+  if(sanitizedCart.length === 0) return null; // nothing worth restoring
+  return {
+    cart: sanitizedCart,
+    fulfil: (data.fulfil === 'pickup' || data.fulfil === 'delivery') ? data.fulfil : null,
+    date: (typeof data.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.date)) ? data.date : null,
+    // time is deliberately NOT restored from storage — it's always derived
+    // fresh from fulfilment (see openOrder()) so a stale or hand-edited
+    // draft can never end up with a mismatched pair like fulfil:'pickup'
+    // paired with a leftover "Delivery time TBC".
+    // Validated against the real delivery zone list, not just length-capped —
+    // a stale draft (e.g. saved before a suburb was removed from
+    // DELIVERY_ZONES) should fall back to "no suburb selected" rather than
+    // restoring a value that can no longer resolve to a real delivery fee.
+    suburb: (typeof data.suburb === 'string' && isValidSuburb(data.suburb)) ? data.suburb : '',
+    address: typeof data.address === 'string' ? data.address.slice(0, 300) : '',
+    fname: typeof data.fname === 'string' ? data.fname.slice(0, 100) : '',
+    lname: typeof data.lname === 'string' ? data.lname.slice(0, 100) : '',
+    email: typeof data.email === 'string' ? data.email.slice(0, 200) : '',
+    phone: typeof data.phone === 'string' ? data.phone.slice(0, 50) : '',
+    message: typeof data.message === 'string' ? data.message.slice(0, 160) : '',
+    notes: typeof data.notes === 'string' ? data.notes.slice(0, 500) : ''
+  };
+}
+
+// ---------------------------------------------------------------------
+// CART — dietary preparation (no added gluten) is a distinct variant,
+// not a flag on an existing line: 1x standard Raspberry Cheesecake and
+// 1x no-added-gluten Raspberry Cheesecake exist as two separate cart
+// lines, matching how the checkout treats them (two separate line
+// items at payment). The variant is chosen when adding a cake, not
+// toggled afterwards — to change a line's variant, remove it and
+// re-add with the checkbox set as wanted.
+// ---------------------------------------------------------------------
+function addToCart(cakeId, qty, glutenFree){
+  // Hardened to the same rules the backend independently enforces —
+  // this doesn't make the frontend authoritative (it still isn't), it
+  // just means a malformed call here (e.g. from a future bug elsewhere
+  // in this file) can't quietly corrupt the cart before it even reaches
+  // checkout. Uses the same resolveCartItem() as sanitizeCartArray()
+  // below, so the two can't validate differently from each other.
+  const resolved = resolveCartItem(cakeId, qty, glutenFree);
+  if(!resolved) return;
+
+  const existing = cart.find(i => i.cakeId === resolved.cakeId && i.glutenFree === resolved.glutenFree);
+  if(existing){ existing.qty = Math.min(existing.qty + resolved.qty, MAX_ITEM_QTY_CLIENT); }
+  else{ cart.push(resolved); }
+  updateCartBadge();
+  saveDraft();
+}
+function removeCartLine(index){
+  cart.splice(index, 1);
+  renderCartStep();
+  updateDocket();
+  refreshNext();
+  updateCartBadge();
+  saveDraft();
+}
+function setCartLineQty(index, qty){
+  const item = cart[index];
+  if(!item) return;
+  // Coerced the same way resolveCartItem() does, even though the only
+  // real callers are the +/- buttons (which always pass clean integers)
+  // — keeps this function safe on its own terms rather than only being
+  // safe because of how it happens to be called today.
+  qty = Math.floor(Number(qty));
+  if(!Number.isFinite(qty) || qty <= 0){ removeCartLine(index); return; }
+  item.qty = Math.min(qty, MAX_ITEM_QTY_CLIENT);
+  renderCartStep();
+  updateDocket();
+  refreshNext();
+  updateCartBadge();
+  saveDraft();
+}
+function cartCount(){ return cart.reduce((n,i) => n + i.qty, 0); }
+// PREVIEW ONLY — not the source of truth. Everything this function (and
+// currentDeliveryFee() below) computes is for on-page display purposes
+// so the customer can see a running total as they shop — it is never
+// sent to or trusted by the backend. create-checkout-session.js looks
+// up every cake's real price and the real delivery fee itself from its
+// own copy of this data and computes the actual amount charged
+// independently. If these two ever disagree (e.g. a price changed on
+// one side and not the other), what gets charged is always whatever
+// the backend calculates, never whatever this preview showed.
+function cartSubtotal(){
+  return cart.reduce((sum,i) => { const c = cakeById(i.cakeId); return sum + (c ? c.price * i.qty : 0); }, 0);
+}
+function updateCartBadge(){
+  const n = cartCount();
+  const label = n > 0 ? `Cart (${n})` : 'Order a cake';
+  const heroLabel = n > 0 ? `Continue your order (${n})` : 'Start an order';
+  const headerBtn = document.getElementById('headerCartBtn');
+  const heroBtn = document.getElementById('heroCartBtn');
+  if(headerBtn) headerBtn.textContent = label;
+  if(heroBtn) heroBtn.textContent = heroLabel;
+}
+
+function updateAddGlutenFreeVisibility(){
+  const sel = document.getElementById('selCakeToAdd');
+  const wrap = document.getElementById('addGlutenFreeWrap');
+  if(!sel || !wrap) return;
+  const eligible = offersGlutenFreeOption(sel.value);
+  wrap.style.display = eligible ? 'flex' : 'none';
+  if(!eligible){ const cb = document.getElementById('addGlutenFreeCheck'); if(cb) cb.checked = false; }
+}
+
+function addSelectedToCart(){
+  const sel = document.getElementById('selCakeToAdd');
+  if(!sel || !sel.value) return;
+  const gfCheck = document.getElementById('addGlutenFreeCheck');
+  const glutenFree = !!(gfCheck && gfCheck.checked);
+  addToCart(sel.value, 1, glutenFree);
+  if(gfCheck) gfCheck.checked = false;
+  renderCartStep();
+  updateDocket();
+  refreshNext();
+}
+
+function populateCakeAddSelect(){
+  const sel = document.getElementById('selCakeToAdd');
+  if(!sel) return;
+  sel.innerHTML = CAKES.map(c => `<option value="${c.id}">${c.name} — ${fmt(c.price)}</option>`).join('');
+  sel.onchange = updateAddGlutenFreeVisibility;
+  updateAddGlutenFreeVisibility();
+}
+
+function renderCartStep(){
+  const list = document.getElementById('cartList');
+  if(!list) return;
+  if(cart.length === 0){
+    list.innerHTML = '<div class="cart-empty">Your cart is empty — add a cake below to get started.</div>';
+    renderMessageAvailabilityNote();
+    return;
+  }
+  list.innerHTML = cart.map((item, index) => {
+    const c = cakeById(item.cakeId);
+    if(!c) return '';
+    const variantSuffix = item.glutenFree ? ' — no added gluten' : '';
+    return `
+      <div class="cart-item">
+        <img src="${cakePhotoSrc(c.photo)}" alt="${c.name}">
+        <div class="cart-item-info">
+          <div class="cart-item-name">${c.name}${variantSuffix}</div>
+          <div class="cart-item-price">${fmt(c.price)} each</div>
+        </div>
+        <div class="cart-item-actions">
+          <div class="qty-stepper">
+            <button type="button" onclick="setCartLineQty(${index}, ${item.qty - 1})" aria-label="Decrease quantity">−</button>
+            <span>${item.qty}</span>
+            <button type="button" onclick="setCartLineQty(${index}, ${item.qty + 1})" aria-label="Increase quantity">+</button>
+          </div>
+          <button type="button" class="cart-item-remove" onclick="removeCartLine(${index})">Remove</button>
+        </div>
+      </div>`;
+  }).join('');
+  renderMessageAvailabilityNote();
+}
+
+function renderMessageAvailabilityNote(){
+  const note = document.getElementById('messageAvailabilityNote');
+  if(!note) return;
+  const qualifying = cart
+    .map(i => cakeById(i.cakeId))
+    .filter(c => c && c.tags && c.tags.includes('Custom Message Available'))
+    .map(c => c.name);
+  if(cart.length === 0){
+    note.textContent = '';
+  } else if(qualifying.length === 0){
+    note.textContent = 'None of the cakes currently in your cart offer piped messages — mention any request in the notes below and we\'ll see what we can do.';
+  } else {
+    const unique = [...new Set(qualifying)];
+    note.textContent = `Piped messages are available on: ${unique.join(', ')}.`;
+  }
+}
+
+
+let lastFocusedBeforeModal = null;
+
+function getFocusableInModal(){
+  const modal = document.querySelector('.modal');
+  return Array.from(modal.querySelectorAll(
+    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )).filter(el => el.offsetParent !== null); // only currently-visible elements (hidden fsteps excluded)
+}
+
+function openOrder(cakeId, glutenFree){
+  // Restores the entire in-progress order — not just the cart — if one
+  // was left mid-flow, whether that's from an ordinary refresh, a
+  // cancelled Stripe payment, or simply closing the modal partway
+  // through last time. See the DRAFT PERSISTENCE comment above.
+  const draft = loadDraftIfAny();
+
+  state = { step:1, fulfil:null, date:null, time:null, paying:false,
+    fname:'',lname:'',email:'',phone:'',message:'',notes:'', address:'' };
+  if(draft){
+    cart = draft.cart;
+    state.fulfil = draft.fulfil;
+    state.date = draft.date;
+    state.time = timeWindowFor(draft.fulfil); // derived, never restored directly — see timeWindowFor() comment
+    state.fname = draft.fname; state.lname = draft.lname;
+    state.email = draft.email; state.phone = draft.phone;
+    state.message = draft.message; state.notes = draft.notes;
+    state.address = draft.address;
+  }
+  if(cakeId){ addToCart(cakeId, 1, glutenFree); }
+
+  lastFocusedBeforeModal = document.activeElement;
+  document.getElementById('overlay').classList.add('open');
+  populateCakeAddSelect();
+  populateSuburbSelect();
+
+  document.getElementById('optPickup').classList.toggle('sel', state.fulfil==='pickup');
+  document.getElementById('optDelivery').classList.toggle('sel', state.fulfil==='delivery');
+  document.getElementById('addressWrap').style.display = state.fulfil==='delivery' ? 'block' : 'none';
+  document.getElementById('timeNote').textContent = timeNoteMessageFor(state.fulfil);
+
+  // Every step-3 field is explicitly set (to either the restored value or
+  // '') rather than left alone — otherwise a previous order's details
+  // could still be sitting visibly in the form when there's no draft to
+  // legitimately restore them from.
+  ['fname','lname','email','phone','message','notes','address'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = state[id] || '';
+  });
+  if(draft && state.fulfil==='delivery' && document.getElementById('suburb')){
+    document.getElementById('suburb').value = draft.suburb || '';
+  }
+
+  const dateInput = document.getElementById('orderDate');
+  const min = minOrderDate();
+  const max = maxOrderDate();
+  dateInput.min = toInputDate(min);
+  dateInput.max = toInputDate(max);
+  dateInput.value = state.date || '';
+
+  const cutoffNote = document.getElementById('cutoffNote');
+  cutoffNote.style.display='none';
+  cutoffNote.classList.remove('blocked');
+  cutoffNote.innerHTML = '';
+  if(state.date){
+    // Re-validate a restored date against the *current* cutoff/blackout/
+    // max-window rules — enough time may have passed since it was saved
+    // that it's no longer valid, and this both catches that and keeps
+    // cutoffNote's wording consistent with a normal date pick.
+    validateDate();
+  }
+
+  renderCartStep();
+  goToStep(1);
+  updateDocket();
+  refreshNext();
+  // Move keyboard focus into the dialog once it's visible and populated,
+  // so screen reader and keyboard users land inside it immediately.
+  requestAnimationFrame(() => {
+    document.querySelector('.modal').focus();
+  });
+  saveDraft(); // ensures a draft now exists reflecting the current (possibly freshly-restored) state
+}
+function closeOrder(){
+  saveDraft(); // belt-and-suspenders — mutations already save continuously, but cheap insurance on close too
+  document.getElementById('overlay').classList.remove('open');
+  // Return focus to whatever triggered the modal, so keyboard users don't
+  // lose their place on the page behind it.
+  if(lastFocusedBeforeModal && typeof lastFocusedBeforeModal.focus === 'function'){
+    lastFocusedBeforeModal.focus();
+  }
+  lastFocusedBeforeModal = null;
+}
+
+document.addEventListener('keydown', (e) => {
+  const overlay = document.getElementById('overlay');
+  if(!overlay.classList.contains('open')) return;
+  if(e.key === 'Escape'){
+    closeOrder();
+    return;
+  }
+  if(e.key === 'Tab'){
+    // Basic focus trap: keep Tab/Shift+Tab cycling within the dialog
+    // rather than escaping to the page behind it.
+    const focusable = getFocusableInModal();
+    if(focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if(e.shiftKey && document.activeElement === first){
+      e.preventDefault();
+      last.focus();
+    } else if(!e.shiftKey && document.activeElement === last){
+      e.preventDefault();
+      first.focus();
+    }
+  }
+});
+
+function populateSuburbSelect(){
+  const sel = document.getElementById('suburb');
+  sel.innerHTML = '<option value="">Choose your area</option>' + DELIVERY_ZONES.map(zone =>
+    zone.suburbs.map(s => `<option value="${s}" data-fee="${zone.fee}">${s} — $${zone.fee}</option>`).join('')
+  ).join('');
+}
+function currentDeliveryFee(){
+  // Returns null (not 0) when nothing valid is selected, so a missing or
+  // stale suburb never gets silently priced as a free delivery — callers
+  // must explicitly handle the null case rather than a fee that happens
+  // to look like a legitimate $0.
+  const sel = document.getElementById('suburb');
+  if(!sel || !sel.value || !isValidSuburb(sel.value)) return null;
+  const fee = parseFloat(sel.selectedOptions[0].dataset.fee);
+  return Number.isFinite(fee) ? fee : null;
+}
+
+function timeWindowFor(fulfil){
+  // The one place this mapping is defined — used both when the customer
+  // actively picks pickup/delivery (setFulfil) and when restoring a
+  // draft (openOrder), so the two can never disagree with each other.
+  if(fulfil === 'pickup') return 'Anytime 7:30am – 3pm';
+  if(fulfil === 'delivery') return 'Delivery time TBC';
+  return null;
+}
+function timeNoteMessageFor(fulfil){
+  if(fulfil === 'pickup') return 'Pickup is available anytime from 7:30am to 3pm daily from the store.';
+  if(fulfil === 'delivery') return 'Delivery time to be confirmed — we\'ll be in touch to arrange a suitable time.';
+  return '';
+}
+
+function setFulfil(type){
+  state.fulfil = type;
+  document.getElementById('optPickup').classList.toggle('sel', type==='pickup');
+  document.getElementById('optDelivery').classList.toggle('sel', type==='delivery');
+  document.getElementById('addressWrap').style.display = type==='delivery' ? 'block' : 'none';
+  if(type === 'pickup'){
+    // A delivery address entered, then switched away from, shouldn't
+    // linger invisibly — clear it at the source rather than only
+    // scrubbing it later when building the payment payload.
+    state.address = '';
+    const addressEl = document.getElementById('address');
+    if(addressEl) addressEl.value = '';
+  }
+  state.time = timeWindowFor(type);
+  document.getElementById('timeNote').textContent = timeNoteMessageFor(type);
+  updateDocket();
+  refreshNext();
+  saveDraft();
+}
+
+function validateDate(){
+  const val = document.getElementById('orderDate').value;
+  const min = minOrderDate();
+  const minDateString = toInputDate(min);
+  const maxDateString = toInputDate(maxOrderDate());
+  const note = document.getElementById('cutoffNote');
+  if(!val){
+    state.date = null;
+    note.style.display='none';
+    note.classList.remove('blocked');
+    note.innerHTML = '';
+    updateDocket();
+    refreshNext();
+    saveDraft();
+    return;
+  }
+  // val, minDateString and maxDateString are all plain "YYYY-MM-DD"
+  // strings — ISO calendar dates sort correctly as strings, so comparing
+  // them directly avoids re-introducing any timezone interpretation via
+  // Date objects (which is exactly what the NZ-anchored calculation
+  // above this is trying to avoid).
+  if(val < minDateString){
+    note.style.display='flex';
+    note.classList.add('blocked');
+    note.innerHTML = `⚠️ That date is inside our 48-hour window. Please choose <b>${prettyDate(minDateString)}</b> or later.`;
+    state.date = null;
+  } else if(val > maxDateString){
+    note.style.display='flex';
+    note.classList.add('blocked');
+    note.innerHTML = `⚠️ We only take bookings up to ${MAX_BOOKING_MONTHS_AHEAD} months ahead. Please choose <b>${prettyDate(maxDateString)}</b> or earlier.`;
+    state.date = null;
+  } else if(BLACKOUT_DATES.includes(val)){
+    note.style.display='flex';
+    note.classList.add('blocked');
+    note.innerHTML = `⚠️ We're closed on <b>${prettyDate(val)}</b>. Please choose another date.`;
+    state.date = null;
+  } else {
+    note.style.display='none';
+    note.classList.remove('blocked');
+    note.innerHTML = '';
+    state.date = val;
+  }
+  updateDocket();
+  refreshNext();
+  saveDraft();
+}
+
+const steps = ['1','2','3','4'];
+function goToStep(n){
+  state.step = n;
+  document.querySelectorAll('.fstep').forEach(f => f.classList.remove('active'));
+  document.querySelector(`.fstep[data-step="${n}"]`).classList.add('active');
+  const idx = steps.indexOf(String(n));
+  document.querySelectorAll('#progress i').forEach((bar,i) => {
+    bar.style.width = i <= idx ? '100%' : '0%';
+  });
+  document.getElementById('backBtn').style.visibility = n===1 ? 'hidden' : 'visible';
+  document.getElementById('nextBtn').textContent = n===4 ? 'Continue to payment' : 'Continue';
+  document.getElementById('modalActions').style.display = n==='confirm' ? 'none' : 'flex';
+  refreshNext();
+}
+
+function isReasonablePhone(value){
+  const digits = (value || '').replace(/[^0-9]/g, '');
+  return digits.length >= 7 && digits.length <= 15; // loose but catches "123" or empty-ish input
+}
+
+function refreshNext(){
+  const n = state.step;
+  const btn = document.getElementById('nextBtn');
+  let ok = true;
+  if(n===1) ok = cart.length > 0;
+  if(n===2){
+    ok = !!state.fulfil && !!state.date;
+    if(state.fulfil==='delivery'){
+      const suburbVal = document.getElementById('suburb').value;
+      ok = ok
+        && !!suburbVal && isValidSuburb(suburbVal)
+        && document.getElementById('address').value.trim().length>3;
+    }
+  }
+  if(n===3){
+    const emailField = document.getElementById('email');
+    ok = document.getElementById('fname').value.trim() &&
+         document.getElementById('lname').value.trim() &&
+         emailField.value.trim() && emailField.checkValidity() &&
+         isReasonablePhone(document.getElementById('phone').value);
+  }
+  if(n===4){
+    ok = !state.paying;
+  }
+  btn.disabled = !ok;
+}
+// The fields that affect step-3 validity get refreshNext() on every
+// keystroke, same as before. All seven free-text fields (including
+// message/notes, which don't gate validity) now also trigger a debounced
+// draft save — previously the draft only captured these when the
+// customer hit Continue, closed the modal, or reached Stripe, so several
+// characters of fresh typing could be lost to an ill-timed refresh.
+// Debounced (not saved on every single keystroke) to avoid hammering
+// sessionStorage while someone is still actively typing.
+let draftSaveTimer = null;
+function scheduleDraftSave(){
+  clearTimeout(draftSaveTimer);
+  draftSaveTimer = setTimeout(saveDraft, 500);
+}
+const VALIDITY_FIELDS = ['fname','lname','email','phone','address'];
+const DRAFT_TEXT_FIELDS = ['fname','lname','email','phone','address','message','notes'];
+DRAFT_TEXT_FIELDS.forEach(id=>{
+  document.addEventListener('input', e => {
+    if(e.target.id !== id) return;
+    // Previously state[id] was only copied from the field at each step's
+    // Continue click, so the docket (which reads from state, not the DOM)
+    // could show a stale/blank value while the customer was still typing.
+    // Syncing live here means the review sidebar genuinely reflects what's
+    // on screen at every keystroke, not just after leaving the step.
+    state[id] = e.target.value;
+    if(VALIDITY_FIELDS.includes(id)) refreshNext();
+    updateDocket();
+    scheduleDraftSave();
+  });
+});
+
+function nextStep(){
+  if(state.step===3){
+    state.fname = document.getElementById('fname').value;
+    state.lname = document.getElementById('lname').value;
+    state.email = document.getElementById('email').value;
+    state.phone = document.getElementById('phone').value;
+    state.message = document.getElementById('message').value;
+    state.notes = document.getElementById('notes').value;
+    updateDocket();
+    saveDraft();
+  }
+  if(state.step===2){
+    state.address = document.getElementById('address').value;
+    updateDocket();
+    saveDraft();
+  }
+  if(state.step===4){
+    startCheckout();
+    return;
+  }
+  goToStep(state.step + 1);
+}
+function prevStep(){ goToStep(state.step - 1); }
+
+async function parseJsonSafely(res){
+  // If Netlify's infrastructure itself has an outage, a request can come
+  // back as an HTML error page (502/504) rather than JSON from our own
+  // function code. res.json() would throw on that — this keeps the HTTP
+  // status visible in the fallback message instead of losing it to a
+  // generic parse-error catch.
+  try{
+    return await res.json();
+  }catch(e){
+    return { error: `Unexpected response from the server (status ${res.status}). Please try again in a moment.` };
+  }
+}
+
+async function startCheckout(){
+  const errEl = document.getElementById('payError');
+  errEl.style.display = 'none';
+  state.paying = true;
+  refreshNext();
+  const btn = document.getElementById('nextBtn');
+  const originalText = btn.textContent;
+  btn.textContent = 'Redirecting to payment\u2026';
+
+  // Only cake ids, quantities and a suburb are sent for pricing purposes \u2014
+  // the server looks up the real prices and delivery fee itself and
+  // ignores any price/name the browser might send. See create-checkout-session.js.
+  const payload = {
+    items: cart.map(i => ({ cakeId: i.cakeId, quantity: i.qty, glutenFree: !!i.glutenFree })),
+    fulfil: state.fulfil,
+    suburb: state.fulfil==='delivery' ? (document.getElementById('suburb').value || '') : '',
+    address: state.fulfil==='delivery' ? (state.address || '') : '',
+    date: state.date,
+    dateDisplay: prettyDate(state.date),
+    time: state.time,
+    fname: state.fname,
+    lname: state.lname,
+    email: state.email,
+    phone: state.phone,
+    message: state.message,
+    notes: state.notes
+  };
+
+  try{
+    const res = await fetch('/.netlify/functions/create-checkout-session', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    const data = await parseJsonSafely(res);
+    if(!res.ok || !data.url){
+      throw new Error(data.error || 'Something went wrong starting payment. Please try again.');
+    }
+    saveDraft(); // one last save right before leaving the page, for certainty
+    window.location.href = data.url;
+  }catch(err){
+    state.paying = false;
+    btn.textContent = originalText;
+    errEl.textContent = '\u26a0\ufe0f ' + (err.message || 'Payment could not be started. Please try again.');
+    errEl.style.display = 'block';
+    refreshNext();
+  }
+}
+
+function setConfirmStamp(status){
+  // The confirmation icon previously stayed a permanent green tick even
+  // when verification failed — misleading, since "Payment not confirmed"
+  // sat right next to a symbol that visually says the opposite. This
+  // keeps the icon honest about which of the three states is showing.
+  const el = document.getElementById('confirmStamp');
+  if(!el) return;
+  if(status === 'checking'){
+    el.textContent = '\u2026';
+    el.style.background = 'var(--ink-soft)';
+  } else if(status === 'confirmed'){
+    el.textContent = '\u2713';
+    el.style.background = 'var(--sage-dark)';
+  } else {
+    el.textContent = '!';
+    el.style.background = '#8C3B2E'; // same warning tone used for cutoffNote.blocked and payError elsewhere
+  }
+}
+
+async function showConfirmationFromStripe(sessionId){
+  // Unlike a normal openOrder() call, this modal opens on a fresh page
+  // load from a Stripe redirect — there's no click that triggered it on
+  // this page load, so lastFocusedBeforeModal (which closeOrder() uses
+  // to return focus) would otherwise be left null and focus would land
+  // nowhere meaningful once "Done" is clicked. Point it at a real,
+  // always-present, useful landing spot instead.
+  lastFocusedBeforeModal = document.getElementById('headerCartBtn');
+  document.getElementById('overlay').classList.add('open');
+  requestAnimationFrame(() => {
+    document.querySelector('.modal').focus();
+  });
+  setConfirmStamp('checking');
+  document.getElementById('confirmHeading').textContent = 'Checking payment\u2026';
+  document.getElementById('confirmSub').textContent = 'Checking your payment\u2026';
+  goToStep('confirm');
+
+  // The URL alone (?order=success) is never treated as proof of payment \u2014
+  // we ask Stripe directly whether this specific session actually paid,
+  // and only show a success message once that's confirmed.
+  try{
+    const res = await fetch('/.netlify/functions/verify-checkout-session', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ sessionId })
+    });
+    const data = await parseJsonSafely(res);
+
+    if(res.ok && data.paid){
+      // orderSummary/amount/currency come from our own server, not
+      // directly from the customer \u2014 but escaped anyway as a cheap extra
+      // safeguard rather than relying solely on that trust boundary.
+      setConfirmStamp('confirmed');
+      document.getElementById('confirmHeading').textContent = 'Order confirmed!';
+      document.getElementById('confirmSub').innerHTML =
+        `Your order for <b>${escapeHtml(data.orderSummary)}</b> is confirmed — $${escapeHtml(data.amount)} ${escapeHtml(data.currency)} paid. We'll be in touch to confirm the details.<br><span style="font-size:12px;color:var(--ink-soft);">Reference: ${escapeHtml(sessionId.slice(-8))}</span>`;
+      cart = [];
+      updateCartBadge();
+      clearDraft();
+      // Only now \u2014 once payment is actually confirmed \u2014 is it safe to drop
+      // session_id from the URL. If we stripped it earlier and this branch
+      // is never reached (e.g. a temporary network error below), the
+      // customer could refresh to retry; once we're here, retrying no
+      // longer serves any purpose, so it's safe to clean up.
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      setConfirmStamp('failed');
+      document.getElementById('confirmHeading').textContent = 'Payment not confirmed';
+      // If verification genuinely just hasn't succeeded yet, data.error
+      // won't be set and the generic message below is the right one. If
+      // parseJsonSafely() caught a non-JSON response (e.g. a Netlify
+      // infrastructure error page), data.error holds that specific,
+      // status-aware message — show it instead of hiding it behind a
+      // generic line that doesn't reflect what actually happened.
+      document.getElementById('confirmSub').innerHTML =
+        data.error
+          ? `${escapeHtml(data.error)} If this keeps happening, contact us at <a href="mailto:theoldflourshop@gmail.com">theoldflourshop@gmail.com</a> or 027 339 9264.`
+          : `We couldn't confirm this payment yet. This page can be safely refreshed to try checking again, or contact us at <a href="mailto:theoldflourshop@gmail.com">theoldflourshop@gmail.com</a> or 027 339 9264 so we can check on it.`;
+    }
+  }catch(err){
+    setConfirmStamp('failed');
+    document.getElementById('confirmHeading').textContent = 'Payment not confirmed';
+    document.getElementById('confirmSub').innerHTML =
+      `We couldn't confirm this payment right now \u2014 this may just be a temporary connection issue. This page can be safely refreshed to try again, or contact us at <a href="mailto:theoldflourshop@gmail.com">theoldflourshop@gmail.com</a> or 027 339 9264 so we can check on it.`;
+  }
+}
+
+function restoreBadgeFromDraftOnPlainLoad(){
+  // A completely ordinary page load/refresh with no Stripe redirect
+  // involved \u2014 we don't want to pop the modal open unprompted, but if a
+  // draft exists we should at least show the correct cart count on the
+  // header/hero buttons. openOrder() will do the full restore (form
+  // fields, fulfilment, date, etc.) once the customer actually clicks
+  // through to the order modal.
+  const draft = loadDraftIfAny();
+  if(draft){ cart = draft.cart; updateCartBadge(); }
+}
+
+(function checkStripeRedirect(){
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = params.get('session_id');
+  if(params.get('order') === 'success' && sessionId){
+    // Deliberately NOT stripping session_id from the URL here \u2014 see the
+    // comment inside showConfirmationFromStripe's success branch for why.
+    // If verification fails or errors, a plain page refresh will retry it
+    // using the same URL rather than losing the session_id permanently.
+    showConfirmationFromStripe(sessionId);
+  } else if(params.get('order') === 'cancelled'){
+    window.history.replaceState({}, document.title, window.location.pathname);
+    // openOrder() itself restores the full draft \u2014 cart, fulfilment,
+    // date, address, contact details \u2014 whenever one exists, so simply
+    // opening the modal here is enough to give the customer their
+    // in-progress order back.
+    openOrder();
+  } else {
+    restoreBadgeFromDraftOnPlainLoad();
+  }
+})();
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+function updateDocket(){
+  const body = document.getElementById('docketBody');
+  const totalRow = document.getElementById('docketTotal');
+  if(cart.length === 0){ body.innerHTML = '<div class="dk-empty">Your order will appear here as you go.</div>'; totalRow.style.display='none'; return; }
+  let rows = cart.map(item => {
+    const c = cakeById(item.cakeId);
+    if(!c) return '';
+    const gfSuffix = item.glutenFree ? ' <span style="color:var(--ink-soft);">(no added gluten)</span>' : '';
+    return `<div class="dk-row"><span class="dk-label">${item.qty}× ${c.name}${gfSuffix}</span><span>${fmt(c.price * item.qty)}</span></div>`;
+  }).join('');
+  if(state.fulfil){
+    let feeText;
+    if(state.fulfil === 'delivery'){
+      const fee = currentDeliveryFee();
+      feeText = fee === null ? 'select your area below' : '$'+fee.toFixed(2)+' ('+ (document.getElementById('suburb').value || '') +')';
+    }
+    rows += `<div class="dk-row"><span class="dk-label">METHOD</span><span>${state.fulfil==='pickup'?'Pickup — free':'Delivery — '+feeText}</span></div>`;
+    // Delivery address is customer-supplied free text — escaped, same as
+    // name/message/notes below, before being placed into this HTML string.
+    if(state.fulfil==='delivery' && state.address){
+      rows += `<div class="dk-row"><span class="dk-label">ADDRESS</span><span>${escapeHtml(state.address)}</span></div>`;
+    }
+  }
+  if(state.date){
+    rows += `<div class="dk-row"><span class="dk-label">DATE</span><span>${prettyDate(state.date)}</span></div>`;
+  }
+  if(state.time){
+    rows += `<div class="dk-row"><span class="dk-label">TIME</span><span>${state.time}</span></div>`;
+  }
+  if(state.fname){
+    // fname/lname/email/phone/message/notes are all customer-supplied free
+    // text — escaped before being placed into this HTML string, so nothing
+    // they type can be interpreted as markup here.
+    rows += `<div class="dk-line"></div><div class="dk-row"><span class="dk-label">NAME</span><span>${escapeHtml(state.fname)} ${escapeHtml(state.lname)}</span></div>`;
+    if(state.email) rows += `<div class="dk-row"><span class="dk-label">EMAIL</span><span>${escapeHtml(state.email)}</span></div>`;
+    if(state.phone) rows += `<div class="dk-row"><span class="dk-label">PHONE</span><span>${escapeHtml(state.phone)}</span></div>`;
+    if(state.message) rows += `<div class="dk-row"><span class="dk-label">MSG</span><span>"${escapeHtml(state.message)}"</span></div>`;
+    if(state.notes) rows += `<div class="dk-row"><span class="dk-label">NOTES</span><span>${escapeHtml(state.notes)}</span></div>`;
+  }
+  body.innerHTML = rows;
+  // A null delivery fee (no valid suburb chosen yet) contributes 0 to this
+  // running total display — the customer can't reach payment in that state
+  // anyway (Step 2 blocks it), so this only ever shows during the brief
+  // window while they're still choosing pickup/delivery and an area.
+  const deliveryComponent = state.fulfil==='delivery' ? (currentDeliveryFee() || 0) : 0;
+  let total = cartSubtotal() + deliveryComponent;
+  document.getElementById('docketTotalVal').textContent = fmt(total);
+  totalRow.style.display = 'flex';
+}
+</script>
+</body>
+</html>
