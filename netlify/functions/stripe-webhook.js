@@ -287,6 +287,13 @@ exports.handler = async (event) => {
           body: JSON.stringify({
             records: [{
               fields: {
+                // This is Airtable's primary field (the default first
+                // column, usually just called "Name") — it's what
+                // Calendar view actually displays on each card, and
+                // what Grid view shows as the row label. It was never
+                // being written before, which is why calendar cards
+                // were showing up blank.
+                'Name': `${m.order_summary || 'Order'} — ${m.customer_name || 'Unknown'}`,
                 'Cake': m.order_summary || '',
                 'Fulfilment': m.fulfilment || '',
                 'Pickup/Delivery Date': m.pickup_delivery_date_iso || '',
