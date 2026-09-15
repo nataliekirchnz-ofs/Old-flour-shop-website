@@ -236,7 +236,7 @@ exports.handler = async (event) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'The Old Flour Shop Orders <onboarding@resend.dev>',
+        from: 'The Old Flour Shop Orders <orders@theoldflourshop.co.nz>',
         to: [BAKERY_EMAIL],
         subject: `New order: ${m.order_summary || 'Cake'} — $${amount}`,
         html: bakeryEmailHtml
@@ -258,7 +258,7 @@ exports.handler = async (event) => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          from: 'The Old Flour Shop Bakery <onboarding@resend.dev>',
+          from: 'The Old Flour Shop Bakery <orders@theoldflourshop.co.nz>',
           to: [customerEmail],
           subject: `Your order is confirmed — ${m.order_summary || 'Cake'}`,
           html: customerEmailHtml

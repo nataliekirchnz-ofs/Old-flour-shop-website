@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://www.theoldflourshop.co.nz/sitemap.xml

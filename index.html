@@ -209,6 +209,7 @@
     box-shadow:0 40px 80px -30px rgba(0,0,0,0.4);
     animation:pop .25s ease;
   }
+  .modal.no-docket{grid-template-columns:1fr;}
   @keyframes pop{from{opacity:0;transform:translateY(10px) scale(.98);}to{opacity:1;transform:none;}}
   .modal-main{padding:34px 36px 30px;}
   .modal-close{position:absolute;top:18px;right:18px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--ink-soft);}
@@ -909,7 +910,7 @@
       </div>
     </div>
 
-    <div class="docket">
+    <div class="docket" id="docketPanel">
       <div class="dk-head"><b>The Old Flour Shop Bakery</b>ORDER DOCKET</div>
       <div id="docketBody">
         <div class="dk-empty">Your order will appear here as you go.</div>
@@ -1668,6 +1669,15 @@ function goToStep(n){
   document.getElementById('backBtn').style.visibility = n===1 ? 'hidden' : 'visible';
   document.getElementById('nextBtn').textContent = n===4 ? 'Continue to payment' : 'Continue';
   document.getElementById('modalActions').style.display = n==='confirm' ? 'none' : 'flex';
+  // The docket ("your order will appear here as you go") is written for
+  // the shopping/building stage — once an order is confirmed, the cart
+  // is already empty and there's nothing left to "go" toward, so that
+  // message reads as a leftover loose end next to a completed order.
+  // Hide the whole panel on the confirmation step instead; the order
+  // summary is already shown in the confirmation text itself.
+  const docketPanel = document.getElementById('docketPanel');
+  if(docketPanel) docketPanel.style.display = n==='confirm' ? 'none' : 'flex';
+  document.querySelector('.modal').classList.toggle('no-docket', n==='confirm');
   refreshNext();
 }
 
