@@ -289,7 +289,7 @@ exports.handler = async (event) => {
               fields: {
                 'Cake': m.order_summary || '',
                 'Fulfilment': m.fulfilment || '',
-                'Pickup/Delivery Date': m.pickup_delivery_date || '',
+                'Pickup/Delivery Date': m.pickup_delivery_date_iso || '',
                 'Time Window': m.time_window || '',
                 'Suburb': m.suburb || '',
                 'Delivery Address': m.delivery_address || '',

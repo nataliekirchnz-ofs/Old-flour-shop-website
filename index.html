@@ -904,6 +904,16 @@
         </div>
       </div>
 
+      <!-- ORDERING PAUSED -->
+      <div class="fstep" data-step="paused">
+        <div class="confirm-wrap">
+          <div class="stamp" style="background:var(--ink-soft);">🕐</div>
+          <h3>Online ordering opens soon</h3>
+          <p class="sub">We're putting the finishing touches on pre-orders — check back shortly, or give us a call at 027 339 9264 in the meantime.</p>
+          <button class="btn" onclick="closeOrder()" style="margin-top:14px;">Close</button>
+        </div>
+      </div>
+
       <div class="modal-actions" id="modalActions">
         <button class="btn btn-ghost" id="backBtn" onclick="prevStep()">Back</button>
         <button class="btn" id="nextBtn" onclick="nextStep()" disabled>Continue</button>
@@ -1038,6 +1048,12 @@ const DELIVERY_ZONES = [
   { fee:25, suburbs:['Mudbrick Vineyard','Cable Bay Vineyard','Wild on Waiheke','Stoneyridge Vineyard','Te Motu Estate','Tantalus Estate','Onetangi'] },
 ];
 const CUTOFF_HOURS = 48;
+// Set to false to stop customers from placing orders, without taking the
+// site itself offline — the menu, story, and contact details stay fully
+// visible and browsable. Flip back to true whenever you're ready to open
+// for real orders. This does NOT touch Netlify's Public/Private visitor
+// access setting, which must stay Public for the Stripe webhook to work.
+const ORDERING_ENABLED = true;
 const MAX_BOOKING_MONTHS_AHEAD = 6; // must match MAX_BOOKING_MONTHS_AHEAD in create-checkout-session.js
 const MAX_ITEM_QTY_CLIENT = 20; // must match MAX_ITEM_QTY in create-checkout-session.js — the backend is authoritative, this is just for immediate UI feedback
 // Dates the bakery is closed / not taking orders — checked here for
@@ -1452,6 +1468,20 @@ function getFocusableInModal(){
 }
 
 function openOrder(cakeId, glutenFree){
+  if(!ORDERING_ENABLED){
+    // Deliberately does not touch cart/draft state at all — if ordering
+    // gets switched back on later mid-session, whatever the customer had
+    // going is still exactly where they left it.
+    document.getElementById('overlay').classList.add('open');
+    document.querySelectorAll('.fstep').forEach(f => f.classList.remove('active'));
+    document.querySelector('.fstep[data-step="paused"]').classList.add('active');
+    document.getElementById('modalActions').style.display = 'none';
+    const docketPanel = document.getElementById('docketPanel');
+    if(docketPanel) docketPanel.style.display = 'none';
+    document.querySelector('.modal').classList.add('no-docket');
+    requestAnimationFrame(() => { document.querySelector('.modal').focus(); });
+    return;
+  }
   // Restores the entire in-progress order — not just the cart — if one
   // was left mid-flow, whether that's from an ordinary refresh, a
   // cancelled Stripe payment, or simply closing the modal partway
@@ -1668,16 +1698,17 @@ function goToStep(n){
   });
   document.getElementById('backBtn').style.visibility = n===1 ? 'hidden' : 'visible';
   document.getElementById('nextBtn').textContent = n===4 ? 'Continue to payment' : 'Continue';
-  document.getElementById('modalActions').style.display = n==='confirm' ? 'none' : 'flex';
+  document.getElementById('modalActions').style.display = (n==='confirm' || n==='paused') ? 'none' : 'flex';
   // The docket ("your order will appear here as you go") is written for
   // the shopping/building stage — once an order is confirmed, the cart
   // is already empty and there's nothing left to "go" toward, so that
   // message reads as a leftover loose end next to a completed order.
   // Hide the whole panel on the confirmation step instead; the order
-  // summary is already shown in the confirmation text itself.
+  // summary is already shown in the confirmation text itself. Same
+  // treatment for the paused-ordering step, which has nothing to review.
   const docketPanel = document.getElementById('docketPanel');
-  if(docketPanel) docketPanel.style.display = n==='confirm' ? 'none' : 'flex';
-  document.querySelector('.modal').classList.toggle('no-docket', n==='confirm');
+  if(docketPanel) docketPanel.style.display = (n==='confirm' || n==='paused') ? 'none' : 'flex';
+  document.querySelector('.modal').classList.toggle('no-docket', n==='confirm' || n==='paused');
   refreshNext();
 }
 
