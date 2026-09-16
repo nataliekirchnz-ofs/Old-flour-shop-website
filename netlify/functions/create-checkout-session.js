@@ -69,10 +69,6 @@ const DELIVERY_ZONES = [
 const BLACKOUT_DATES = ['2026-12-25', '2027-01-01'];
 
 const CUTOFF_HOURS = 48;
-// Must match ORDERING_ENABLED in index.html. The frontend flag hides the
-// order flow for convenience; this one is what actually stops a payment
-// from being created if it's ever bypassed or called directly.
-const ORDERING_ENABLED = true;
 const MAX_BOOKING_MONTHS_AHEAD = 6; // must match MAX_BOOKING_MONTHS_AHEAD in index.html
 const MAX_ITEM_QTY = 20;      // sanity cap per cake line
 const MAX_CART_ITEMS = 20;    // sanity cap on number of distinct cart lines in one order
@@ -179,10 +175,6 @@ function isValidBookingDate(dateStr) {
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
-  }
-
-  if (!ORDERING_ENABLED) {
-    return { statusCode: 503, body: JSON.stringify({ error: "We're not taking online orders just yet — please check back shortly." }) };
   }
 
   const clientIp = clientIpFrom(event);
