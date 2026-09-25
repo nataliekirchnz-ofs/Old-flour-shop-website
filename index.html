@@ -277,6 +277,7 @@
   .docket .dk-row span:last-child{overflow-wrap:anywhere;min-width:0;}
   .docket .dk-row span:last-child{text-align:right;}
   .docket .dk-label{color:var(--ink-soft);}
+  .docket .dk-sub{margin-top:-4px;padding-left:14px;font-size:11.5px;}
   .docket .dk-line{border-top:1px dashed var(--line);margin:14px 0;}
   .docket .dk-total{display:flex;justify-content:space-between;font-size:15px;font-weight:700;margin-top:auto;padding-top:14px;border-top:1px dashed var(--line);}
   .docket .dk-empty{color:var(--ink-soft);text-align:center;margin-top:30px;font-style:italic;}
@@ -2029,9 +2030,14 @@ function updateDocket(){
   let rows = cart.map(item => {
     const c = cakeById(item.cakeId);
     if(!c) return '';
-    const unitPrice = c.price + (item.glutenFree ? GF_SURCHARGE : 0);
-    const gfSuffix = item.glutenFree ? ` <span style="color:var(--ink-soft);">(no added gluten +${fmt(GF_SURCHARGE)} ea)</span>` : '';
-    return `<div class="dk-row"><span class="dk-label">${item.qty}× ${c.name}${gfSuffix}</span><span>${fmt(unitPrice * item.qty)}</span></div>`;
+    // Cake at its normal price, then the no-added-gluten charge on its own
+    // indented row underneath, so it's obvious what the extra is for.
+    let row = `<div class="dk-row"><span class="dk-label">${item.qty}× ${c.name}</span><span>${fmt(c.price * item.qty)}</span></div>`;
+    if(item.glutenFree){
+      const each = item.qty > 1 ? ` (${item.qty} × ${fmt(GF_SURCHARGE)})` : '';
+      row += `<div class="dk-row dk-sub"><span class="dk-label">+ No added gluten${each}</span><span>${fmt(GF_SURCHARGE * item.qty)}</span></div>`;
+    }
+    return row;
   }).join('');
   if(state.fulfil){
     let feeText;
@@ -2077,7 +2083,7 @@ function updateDocket(){
   const preSurchargeTotalCents = Math.round((cartSubtotal() + deliveryComponent) * 100);
   const cardSurchargeCents = Math.round(preSurchargeTotalCents * CARD_SURCHARGE_RATE);
   const cardSurcharge = cardSurchargeCents / 100;
-  rows += `<div class="dk-row"><span class="dk-label">CARD SURCHARGE (${(CARD_SURCHARGE_RATE*100).toFixed(1)}%)</span><span>${fmt(cardSurcharge)}</span></div>`;
+  rows += `<div class="dk-row"><span class="dk-label">CREDIT CARD SURCHARGE (${(CARD_SURCHARGE_RATE*100).toFixed(1)}%)</span><span>${fmt(cardSurcharge)}</span></div>`;
   body.innerHTML = rows;
   let total = (preSurchargeTotalCents + cardSurchargeCents) / 100;
   document.getElementById('docketTotalVal').textContent = fmt(total);

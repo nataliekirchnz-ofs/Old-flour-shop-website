@@ -310,7 +310,7 @@ exports.handler = async (event) => {
   const cardSurchargeCents = Math.round((itemsSubtotalCents + deliveryFeeCents) * CARD_SURCHARGE_RATE);
   if (cardSurchargeCents > 0) {
     params.append(`line_items[${lineIndex}][price_data][currency]`, 'nzd');
-    params.append(`line_items[${lineIndex}][price_data][product_data][name]`, `Card surcharge (${(CARD_SURCHARGE_RATE * 100).toFixed(1)}%)`);
+    params.append(`line_items[${lineIndex}][price_data][product_data][name]`, `Credit Card Surcharge (${(CARD_SURCHARGE_RATE * 100).toFixed(1)}%)`);
     params.append(`line_items[${lineIndex}][price_data][unit_amount]`, String(cardSurchargeCents));
     params.append(`line_items[${lineIndex}][quantity]`, '1');
     lineIndex++;
