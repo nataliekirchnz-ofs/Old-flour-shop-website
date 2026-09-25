@@ -19,7 +19,8 @@
 //      add it in Netlify as RESEND_API_KEY
 //   2. In Stripe Dashboard -> Developers -> Webhooks -> Add endpoint:
 //        URL:    https://YOUR-SITE.netlify.app/.netlify/functions/stripe-webhook
-//        Event:  checkout.session.completed
+//        Events: checkout.session.completed
+//                checkout.session.async_payment_succeeded
 //      Stripe will show you a "Signing secret" (starts with whsec_...) —
 //      add that in Netlify as STRIPE_WEBHOOK_SECRET
 //   3. Add BAKERY_NOTIFICATION_EMAIL in Netlify — the address that
@@ -137,26 +138,43 @@ function toPlainSms(str) {
 }
 
 
+// How old a Stripe message can be before it's rejected. Stripe's own
+// libraries use 5 minutes. This stops an old, genuine message that someone
+// managed to copy from being replayed later.
+const SIGNATURE_TOLERANCE_SECONDS = 300;
+
 function verifyStripeSignature(rawBody, sigHeader, secret) {
   if (!sigHeader) return false;
-  const parts = Object.fromEntries(
-    sigHeader.split(',').map(p => p.split('='))
-  );
-  const timestamp = parts.t;
-  const signature = parts.v1;
-  if (!timestamp || !signature) return false;
+  // The header looks like "t=123,v1=abc,v1=def". There can be more than
+  // one v1 signature (e.g. while Stripe is rotating the secret), so all of
+  // them are collected, and any one matching is enough.
+  let timestamp = null;
+  const signatures = [];
+  for (const part of sigHeader.split(',')) {
+    const i = part.indexOf('=');
+    if (i === -1) continue;
+    const key = part.slice(0, i).trim();
+    const value = part.slice(i + 1).trim();
+    if (key === 't') timestamp = value;
+    if (key === 'v1') signatures.push(value);
+  }
+  if (!timestamp || !/^\d+$/.test(timestamp) || signatures.length === 0) return false;
+
+  const age = Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp));
+  if (age > SIGNATURE_TOLERANCE_SECONDS) return false;
 
   const signedPayload = `${timestamp}.${rawBody}`;
-  const expected = crypto
-    .createHmac('sha256', secret)
-    .update(signedPayload, 'utf8')
-    .digest('hex');
+  const expected = Buffer.from(
+    crypto.createHmac('sha256', secret).update(signedPayload, 'utf8').digest('hex'),
+    'hex'
+  );
 
-  // constant-time comparison
-  const a = Buffer.from(expected, 'hex');
-  const b = Buffer.from(signature, 'hex');
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
+  // constant-time comparison against each signature
+  return signatures.some(sig => {
+    if (!/^[0-9a-f]+$/i.test(sig)) return false;
+    const b = Buffer.from(sig, 'hex');
+    return b.length === expected.length && crypto.timingSafeEqual(expected, b);
+  });
 }
 
 exports.handler = async (event) => {
@@ -202,20 +220,30 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: 'Invalid JSON.' };
   }
 
-  // We only care about successful payments.
-  if (stripeEvent.type !== 'checkout.session.completed') {
-    return { statusCode: 200, body: 'Ignored (not a completed checkout).' };
+  // We only care about checkouts that are actually paid. Card payments
+  // arrive as "checkout.session.completed" already paid. Some slower
+  // payment types (e.g. bank debits) complete checkout first and only
+  // pay later — for those, "completed" arrives unpaid and is skipped
+  // here, and the order is processed when Stripe sends
+  // "checkout.session.async_payment_succeeded" once the money clears.
+  const HANDLED_EVENTS = ['checkout.session.completed', 'checkout.session.async_payment_succeeded'];
+  if (!HANDLED_EVENTS.includes(stripeEvent.type)) {
+    return { statusCode: 200, body: 'Ignored (not a checkout payment event).' };
   }
-
-  // Fast path: has this exact Stripe event already been handled by this
-  // warm container? (See processedEventIds comment above for what this
-  // does and doesn't cover.)
-  if (processedEventIds.has(stripeEvent.id)) {
-    return { statusCode: 200, body: 'Already processed (duplicate webhook delivery, same instance) — skipped.' };
-  }
-  processedEventIds.add(stripeEvent.id);
 
   const session = stripeEvent.data.object;
+
+  if (session.payment_status !== 'paid') {
+    return { statusCode: 200, body: 'Checkout completed but not paid yet — waiting for payment.' };
+  }
+
+  // Fast path: has this order already been handled by this warm
+  // container? Keyed by session (the order itself), not by event, since
+  // one order can arrive under either event type above. (See
+  // processedEventIds comment above for what this does and doesn't cover.)
+  if (processedEventIds.has(session.id)) {
+    return { statusCode: 200, body: 'Already processed (duplicate webhook delivery, same instance) — skipped.' };
+  }
 
   // Durable path: has this session already been logged to Airtable by a
   // previous (possibly different) function instance? Only runs when
@@ -228,10 +256,16 @@ exports.handler = async (event) => {
   const amount = ((session.amount_total || 0) / 100).toFixed(2);
   const currency = (session.currency || 'nzd').toUpperCase();
   const customerEmail = session.customer_details?.email || session.customer_email || '';
-  // Free text the customer actually typed — escaped once here, then used
-  // safely everywhere below. order_summary/fulfilment/date/time/suburb
-  // are all built server-side from our own trusted data, not customer
-  // free text, so they don't need this.
+  // Everything below that goes into the HTML emails is escaped first —
+  // the customer's own free text, and (as a second safeguard) the values
+  // our checkout function builds itself, so nothing can ever be read as
+  // web code in an email.
+  const safeCustomerEmail = escapeHtml(customerEmail);
+  const safeSummary = escapeHtml(m.order_summary);
+  const safeDate = escapeHtml(m.pickup_delivery_date);
+  const safeTime = escapeHtml(m.time_window);
+  const safeSuburb = escapeHtml(m.suburb);
+  const safeFulfilment = escapeHtml(m.fulfilment);
   const safeCustomerName = escapeHtml(m.customer_name);
   const safePhone = escapeHtml(m.phone);
   const safeDeliveryAddress = escapeHtml(m.delivery_address);
@@ -241,18 +275,18 @@ exports.handler = async (event) => {
 
   const bakeryEmailHtml = `
     <div style="font-family:sans-serif;font-size:15px;color:#2B3C25;line-height:1.6;">
-      <h2 style="margin:0 0 12px;">New cake order — ${m.order_summary || 'Unknown cake'}</h2>
+      <h2 style="margin:0 0 12px;">New cake order — ${safeSummary || 'Unknown cake'}</h2>
       <p style="margin:0 0 16px;"><strong>Total paid:</strong> $${amount} ${currency}</p>
       <table style="border-collapse:collapse;width:100%;max-width:480px;">
         <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Customer</td><td>${safeCustomerName}</td></tr>
         <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Phone</td><td>${safePhone}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Email</td><td>${customerEmail}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Cake</td><td>${m.order_summary || ''}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Fulfilment</td><td>${m.fulfilment || ''}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Date</td><td>${m.pickup_delivery_date || ''}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Time window</td><td>${m.time_window || ''}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Email</td><td>${safeCustomerEmail}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Cake</td><td>${safeSummary}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Fulfilment</td><td>${safeFulfilment}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Date</td><td>${safeDate}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Time window</td><td>${safeTime}</td></tr>
         ${m.fulfilment === 'delivery' ? `
-        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Suburb</td><td>${m.suburb || ''}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Suburb</td><td>${safeSuburb}</td></tr>
         <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Delivery address</td><td>${safeDeliveryAddress}</td></tr>
         ` : ''}
         ${m.cake_message ? `<tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Cake message</td><td>"${safeCakeMessage}"</td></tr>` : ''}
@@ -263,8 +297,8 @@ exports.handler = async (event) => {
   `;
 
   const fulfilLine = m.fulfilment === 'delivery'
-    ? `We'll deliver your cake to <strong>${safeDeliveryAddress || 'your address'}</strong> (${m.suburb || 'Waiheke Island'}) on <strong>${m.pickup_delivery_date || ''}</strong>. ${m.time_window ? `Delivery time: ${m.time_window}.` : ''}`
-    : `Your cake will be ready for pickup from our Oneroa bakery on <strong>${m.pickup_delivery_date || ''}</strong>. ${m.time_window ? m.time_window + '.' : ''}`;
+    ? `We'll deliver your cake to <strong>${safeDeliveryAddress || 'your address'}</strong> (${safeSuburb || 'Waiheke Island'}) on <strong>${safeDate}</strong>. ${safeTime ? `Delivery time: ${safeTime}.` : ''}`
+    : `Your cake will be ready for pickup from our Oneroa bakery on <strong>${safeDate}</strong>. ${safeTime ? safeTime + '.' : ''}`;
 
   const customerEmailHtml = `
     <div style="font-family:sans-serif;font-size:15px;color:#2B3C25;line-height:1.6;max-width:520px;">
@@ -275,7 +309,7 @@ exports.handler = async (event) => {
       <p style="margin:0 0 20px;color:#5F6350;">Your order is confirmed — here's a copy for your records.</p>
 
       <table style="border-collapse:collapse;width:100%;margin-bottom:16px;">
-        <tr><td style="padding:6px 12px 6px 0;color:#5F6350;">Cake</td><td><strong>${m.order_summary || ''}</strong></td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:#5F6350;">Cake</td><td><strong>${safeSummary}</strong></td></tr>
         <tr><td style="padding:6px 12px 6px 0;color:#5F6350;">Total paid</td><td>$${amount} ${currency}</td></tr>
         ${m.cake_message ? `<tr><td style="padding:6px 12px 6px 0;color:#5F6350;">Cake message</td><td>"${safeCakeMessage}"</td></tr>` : ''}
         ${m.allergy_notes ? `<tr><td style="padding:6px 12px 6px 0;color:#5F6350;">Notes we have</td><td>${safeAllergyNotes}</td></tr>` : ''}
@@ -295,63 +329,17 @@ exports.handler = async (event) => {
     </div>
   `;
 
-  try {
-    const bakeryRes = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: 'The Old Flour Shop Orders <orders@theoldflourshop.co.nz>',
-        to: [BAKERY_EMAIL],
-        // orders@theoldflourshop.co.nz is a verified sending address, not
-        // a real inbox — nothing arrives there if someone replies. This
-        // makes sure a reply lands somewhere actually checked, matching
-        // BAKERY_EMAIL (defaulting to theoldflourshop@gmail.com) so any
-        // reply-all or forward from the bakery's own inbox behaves sanely.
-        reply_to: BAKERY_EMAIL,
-        subject: `New order: ${m.order_summary || 'Cake'} — $${amount}`,
-        html: bakeryEmailHtml
-      })
-    });
-    if (!bakeryRes.ok) {
-      console.error('Resend error (bakery email):', await bakeryRes.text());
-    }
-  } catch (err) {
-    console.error('Failed to send bakery notification email:', err);
-  }
-
-  if (customerEmail) {
-    try {
-      const customerRes = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: 'The Old Flour Shop Bakery <orders@theoldflourshop.co.nz>',
-          to: [customerEmail],
-          // Same reasoning as above — orders@theoldflourshop.co.nz can
-          // send but can't receive. The email itself explicitly invites
-          // "just reply to this email", so this is what actually makes
-          // that true: a reply now lands in theoldflourshop@gmail.com,
-          // the inbox that's genuinely checked, instead of vanishing.
-          reply_to: 'theoldflourshop@gmail.com',
-          subject: `Your order is confirmed — ${m.order_summary || 'Cake'}`,
-          html: customerEmailHtml
-        })
-      });
-      if (!customerRes.ok) {
-        console.error('Resend error (customer email):', await customerRes.text());
-      }
-    } catch (err) {
-      console.error('Failed to send customer confirmation email:', err);
-    }
-  } else {
-    console.error('No customer email found on session — skipped customer confirmation.');
-  }
+  // ── Save the order record first — this step must succeed ─────────────
+  // If the order can't be saved, we return an error so Stripe tries again
+  // automatically (it keeps retrying for up to 3 days). Nothing has been
+  // emailed or texted yet at this point, so a retry never sends doubles.
+  // Airtable is the record when it's set up; if it isn't, the bakery
+  // email is the record instead (see below).
+  const retryLater = (why) => {
+    console.error(`${why} — returning an error so Stripe retries this order.`);
+    return { statusCode: 500, body: 'Temporary problem saving order; please retry.' };
+  };
+  const airtableConfigured = !!(AIRTABLE_API_KEY && AIRTABLE_BASE_ID);
 
   if (AIRTABLE_API_KEY && AIRTABLE_BASE_ID) {
     try {
@@ -393,10 +381,77 @@ exports.handler = async (event) => {
       );
       if (!airtableRes.ok) {
         console.error('Airtable error:', await airtableRes.text());
+        return retryLater('Could not save order to Airtable');
       }
     } catch (err) {
       console.error('Failed to log order to Airtable:', err);
+      return retryLater('Could not save order to Airtable');
     }
+  }
+
+
+  try {
+    const bakeryRes = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'The Old Flour Shop Orders <orders@theoldflourshop.co.nz>',
+        to: [BAKERY_EMAIL],
+        // orders@theoldflourshop.co.nz is a verified sending address, not
+        // a real inbox — nothing arrives there if someone replies. This
+        // makes sure a reply lands somewhere actually checked, matching
+        // BAKERY_EMAIL (defaulting to theoldflourshop@gmail.com) so any
+        // reply-all or forward from the bakery's own inbox behaves sanely.
+        reply_to: BAKERY_EMAIL,
+        subject: `New order: ${m.order_summary || 'Cake'} — $${amount}`,
+        html: bakeryEmailHtml
+      })
+    });
+    if (!bakeryRes.ok) {
+      console.error('Resend error (bakery email):', await bakeryRes.text());
+      if (!airtableConfigured) return retryLater('Could not send bakery order email');
+    }
+  } catch (err) {
+    console.error('Failed to send bakery notification email:', err);
+    if (!airtableConfigured) return retryLater('Could not send bakery order email');
+  }
+
+  // The order is now safely recorded, so this warm container can skip
+  // any repeat delivery of it without re-sending anything.
+  processedEventIds.add(session.id);
+
+  if (customerEmail) {
+    try {
+      const customerRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: 'The Old Flour Shop Bakery <orders@theoldflourshop.co.nz>',
+          to: [customerEmail],
+          // Same reasoning as above — orders@theoldflourshop.co.nz can
+          // send but can't receive. The email itself explicitly invites
+          // "just reply to this email", so this is what actually makes
+          // that true: a reply now lands in theoldflourshop@gmail.com,
+          // the inbox that's genuinely checked, instead of vanishing.
+          reply_to: 'theoldflourshop@gmail.com',
+          subject: `Your order is confirmed — ${m.order_summary || 'Cake'}`,
+          html: customerEmailHtml
+        })
+      });
+      if (!customerRes.ok) {
+        console.error('Resend error (customer email):', await customerRes.text());
+      }
+    } catch (err) {
+      console.error('Failed to send customer confirmation email:', err);
+    }
+  } else {
+    console.error('No customer email found on session — skipped customer confirmation.');
   }
 
   // ── Staff text alert (only if ClickSend is set up) ───────────────────
@@ -420,8 +475,9 @@ exports.handler = async (event) => {
     }
   }
 
-  // All of the above (bakery email, customer email, Airtable log, staff text) are logged
-  // above but never block Stripe's webhook response — Stripe only
-  // needs to know we received the event.
+  // The order record (Airtable, or the bakery email if Airtable isn't set
+  // up) is the one step that makes Stripe retry on failure. The customer
+  // email and staff text are best-effort: failures are logged, but
+  // don't trigger a retry, as that would re-send everything else too.
   return { statusCode: 200, body: 'OK' };
 };

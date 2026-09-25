@@ -31,43 +31,61 @@ function clientIpFrom(event) {
   return event.headers['x-nf-client-connection-ip'] || event.headers['client-ip'] || firstForwarded || 'unknown';
 }
 
+// Every response carries "no-store" so browsers and in-between caches
+// never keep a copy of someone's order confirmation.
+const NO_STORE = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
+const respond = (statusCode, obj) => ({ statusCode, headers: NO_STORE, body: JSON.stringify(obj) });
+
+// Stripe Checkout session IDs look like "cs_live_..." or "cs_test_..."
+// followed by letters and numbers. Anything else is rejected before we
+// even ask Stripe. 255 characters is a generous upper limit.
+const SESSION_ID_PATTERN = /^cs_(live|test)_[A-Za-z0-9]+$/;
+const SESSION_ID_MAX_LENGTH = 255;
+
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+    return respond(405, { error: 'Method not allowed' });
   }
 
   const clientIp = clientIpFrom(event);
   if (isRateLimited(clientIp)) {
-    return { statusCode: 429, body: JSON.stringify({ error: 'Too many requests. Please wait a moment and try again.' }) };
+    return respond(429, { error: 'Too many requests. Please wait a moment and try again.' });
   }
 
   const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
   if (!STRIPE_SECRET_KEY) {
-    return { statusCode: 500, body: JSON.stringify({ error: 'Server is not configured yet.' }) };
+    return respond(500, { error: 'Server is not configured yet.' });
   }
 
   let body;
   try {
     body = JSON.parse(event.body);
   } catch (e) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid request.' }) };
+    return respond(400, { error: 'Invalid request.' });
   }
 
   const sessionId = body.sessionId;
   // Stripe Checkout session IDs always start with "cs_" — a cheap sanity
   // check before we even bother calling Stripe with it.
-  if (!sessionId || typeof sessionId !== 'string' || !sessionId.startsWith('cs_')) {
-    return { statusCode: 400, body: JSON.stringify({ error: 'Missing or invalid session id.' }) };
+  if (typeof sessionId !== 'string' || sessionId.length > SESSION_ID_MAX_LENGTH || !SESSION_ID_PATTERN.test(sessionId)) {
+    return respond(400, { error: 'Missing or invalid session id.' });
   }
 
   try {
     const stripeRes = await fetch(`https://api.stripe.com/v1/checkout/sessions/${encodeURIComponent(sessionId)}`, {
       headers: { 'Authorization': `Bearer ${STRIPE_SECRET_KEY}` }
     });
-    const session = await stripeRes.json();
+    const session = await stripeRes.json().catch(() => ({}));
 
+    // A genuine "no such order" from Stripe is different from Stripe (or
+    // our key) having a problem — the second one is worth retrying and
+    // shouldn't tell the customer their order doesn't exist.
+    if (stripeRes.status === 404) {
+      return respond(404, { error: 'Order not found.' });
+    }
     if (!stripeRes.ok) {
-      return { statusCode: 404, body: JSON.stringify({ error: 'Order not found.' }) };
+      console.error('Stripe error while verifying session:', stripeRes.status, session?.error?.message || '');
+      return respond(502, { error: "We couldn't reach our payment provider to confirm this just now. Please refresh this page in a moment." });
     }
 
     // This is the actual proof of payment — not the URL, not anything the
@@ -75,28 +93,23 @@ exports.handler = async (event) => {
     const paid = session.payment_status === 'paid' && session.status === 'complete';
 
     if (!paid) {
-      return {
-        statusCode: 200,
-        body: JSON.stringify({ paid: false })
-      };
+      return respond(200, { paid: false });
     }
 
     const m = session.metadata || {};
-    return {
-      statusCode: 200,
-      body: JSON.stringify({
+    // Only what the confirmation page actually shows is returned. The
+    // customer's email is deliberately left out — the page doesn't use it.
+    return respond(200, {
         paid: true,
         orderSummary: m.order_summary || '',
         fulfilment: m.fulfilment || '',
         dateDisplay: m.pickup_delivery_date || '',
         timeWindow: m.time_window || '',
-        email: session.customer_details?.email || session.customer_email || '',
-        amount: ((session.amount_total || 0) / 100).toFixed(2),
+          amount: ((session.amount_total || 0) / 100).toFixed(2),
         currency: (session.currency || 'nzd').toUpperCase()
-      })
-    };
+    });
   } catch (err) {
     console.error('Verify session error:', err);
-    return { statusCode: 500, body: JSON.stringify({ error: 'Could not verify payment. Please contact us to confirm your order.' }) };
+    return respond(500, { error: 'Could not verify payment. Please contact us to confirm your order.' });
   }
 };

@@ -198,7 +198,13 @@ emails to go somewhere other than theoldflourshop@gmail.com.*
 ### 3. Tell Stripe where to send the "payment succeeded" signal
 In your **Stripe Dashboard → Developers → Webhooks → Add endpoint**:
 - Endpoint URL: `https://YOUR-SITE.netlify.app/.netlify/functions/stripe-webhook`
-- Event to listen for: `checkout.session.completed`
+- Events to listen for: `checkout.session.completed` **and**
+  `checkout.session.async_payment_succeeded`
+
+*(The second event only matters if you ever switch on a slower payment
+type in Stripe, such as a bank debit. Those complete checkout before the
+money arrives, so the order is only processed once Stripe confirms the
+payment has cleared. Card payments always use the first event.)*
 
 After creating it, Stripe shows a **Signing secret** (starts with
 `whsec_...`). Add that in Netlify too:
@@ -668,3 +674,19 @@ everything else works exactly as before.
   still work).
 - **No links:** ClickSend holds back texts containing web links on new
   accounts, so the alert deliberately contains none.
+
+## If something goes wrong saving an order
+
+When a payment succeeds, the webhook saves the order record first:
+Airtable if it's set up, otherwise the bakery email. If that step fails
+(for example Airtable or Resend is briefly down), the webhook tells Stripe
+so, and **Stripe automatically tries again**, repeatedly for up to 3 days.
+Nothing is emailed or texted until the order has been saved, so a retry
+never sends double emails.
+
+The customer email and staff text are sent after that, and a failure
+there is logged but doesn't trigger a retry.
+
+You can see any retries in **Stripe Dashboard → Developers → Webhooks →
+your endpoint**, where failed attempts show in red with the time of the
+next retry.

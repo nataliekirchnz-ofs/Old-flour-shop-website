@@ -162,6 +162,26 @@ function maxBookableDateNZ() {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + MAX_BOOKING_MONTHS_AHEAD, now.getUTCDate(), 0, 0, 0));
 }
 
+// The time wording shown in emails/Airtable. Set here on the server from
+// the (already validated) pickup/delivery choice, never taken from the
+// browser. Must match timeWindowFor() in index.html so the wording the
+// customer sees on the website is the same as in their email.
+const TIME_WINDOWS = {
+  pickup: 'Anytime 7:30am – 3pm',
+  delivery: 'Delivery time TBC'
+};
+
+// Turns a validated "YYYY-MM-DD" into the friendly "Sat, 3 Oct 2026" style
+// used in emails — built here on the server, rather than trusting the
+// display text the browser sends. Formatted in UTC because the date was
+// built as a UTC midnight, so the calendar day can never shift.
+function displayDate(dateStr) {
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, mo - 1, d)).toLocaleDateString('en-NZ', {
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'
+  });
+}
+
 function isValidBookingDate(dateStr) {
   if (typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
   const parts = dateStr.split('-').map(Number);
@@ -331,14 +351,16 @@ exports.handler = async (event) => {
     fulfilment: order.fulfil,
     suburb: suburb,
     delivery_address: order.fulfil === 'delivery' ? (order.address || '').trim() : '',
-    pickup_delivery_date: order.dateDisplay || order.date,
+    // Both built server-side from validated values (see displayDate and
+    // TIME_WINDOWS above) — the browser's own dateDisplay/time are ignored.
+    pickup_delivery_date: displayDate(order.date),
     // order.date is already validated as a plain YYYY-MM-DD string by
     // isValidBookingDate() above — kept separately from the human-
     // readable version above because Airtable's Date field type needs
     // this exact ISO format to parse correctly, while the emails want
     // the friendly "Sat, 13 Sept 2026" style instead.
     pickup_delivery_date_iso: order.date,
-    time_window: order.time || '',
+    time_window: TIME_WINDOWS[order.fulfil] || '',
     customer_name: `${order.fname} ${order.lname}`,
     phone: order.phone || '',
     cake_message: (order.message || '').trim(),
