@@ -238,6 +238,12 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         from: 'The Old Flour Shop Orders <orders@theoldflourshop.co.nz>',
         to: [BAKERY_EMAIL],
+        // orders@theoldflourshop.co.nz is a verified sending address, not
+        // a real inbox — nothing arrives there if someone replies. This
+        // makes sure a reply lands somewhere actually checked, matching
+        // BAKERY_EMAIL (defaulting to theoldflourshop@gmail.com) so any
+        // reply-all or forward from the bakery's own inbox behaves sanely.
+        reply_to: BAKERY_EMAIL,
         subject: `New order: ${m.order_summary || 'Cake'} — $${amount}`,
         html: bakeryEmailHtml
       })
@@ -260,6 +266,12 @@ exports.handler = async (event) => {
         body: JSON.stringify({
           from: 'The Old Flour Shop Bakery <orders@theoldflourshop.co.nz>',
           to: [customerEmail],
+          // Same reasoning as above — orders@theoldflourshop.co.nz can
+          // send but can't receive. The email itself explicitly invites
+          // "just reply to this email", so this is what actually makes
+          // that true: a reply now lands in theoldflourshop@gmail.com,
+          // the inbox that's genuinely checked, instead of vanishing.
+          reply_to: 'theoldflourshop@gmail.com',
           subject: `Your order is confirmed — ${m.order_summary || 'Cake'}`,
           html: customerEmailHtml
         })
