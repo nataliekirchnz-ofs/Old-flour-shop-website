@@ -24,17 +24,18 @@
 // A request failing any of these never reaches Stripe.
 //
 // ── IMPORTANT — KEEPING THIS IN SYNC ────────────────────────────────────
-// CAKES, DELIVERY_ZONES and BLACKOUT_DATES below are a deliberate copy of
-// the same data in index.html's <script>. This site has no build step
-// and no database, so there is no single source of truth to share
-// automatically — if you add a cake, remove a cake, change a price/
-// delivery fee, or add a closed date on the website, you must make the
-// same change here, or checkout will use the old value. Keep the `id`
-// values identical between the two files; that's what links them.
+// CAKES, DELIVERY_ZONES, BLACKOUT_DATES, GF_SURCHARGE and
+// CARD_SURCHARGE_RATE below are a deliberate copy of the same values in
+// index.html's <script>. This site has no build step and no database, so
+// there is no single source of truth to share automatically — if you add
+// a cake, remove a cake, change a price/delivery fee, change either
+// surcharge, or add a closed date on the website, you must make the same
+// change here, or checkout will use the old value. Keep the `id` values
+// identical between the two files; that's what links them.
 // ─────────────────────────────────────────────────────────────────────
 
 const CAKES = {
-  'chocolate-cake':          { name: 'Chocolate Celebration Cake', price: 120, glutenFreeOption: false },
+  'chocolate-cake':          { name: 'Chocolate Celebration Cake', price: 135, glutenFreeOption: false },
   'raspberry-cheesecake':    { name: 'Raspberry Cheesecake',       price: 125, glutenFreeOption: true },
   'chocolate-marquise':      { name: 'Chocolate Marquise',         price: 130, glutenFreeOption: false },
   'tiramisu-cake':           { name: 'Tiramisu Cake',              price: 115, glutenFreeOption: false },
@@ -43,6 +44,8 @@ const CAKES = {
   'passionfruit-cheesecake': { name: 'Passionfruit Cheesecake',    price: 125, glutenFreeOption: true },
   'lemon-lover-cake':        { name: 'Lemon Lover Cake',           price: 115, glutenFreeOption: false },
   'raspberry-crumble':       { name: 'Raspberry Crumble Cake',     price: 100, glutenFreeOption: false },
+  'boysenberry-cheesecake':  { name: 'Boysenberry Cheesecake',     price: 125, glutenFreeOption: true },
+  'key-lime-pie':            { name: 'Key Lime Pie',               price: 130, glutenFreeOption: true },
 };
 
 const DELIVERY_ZONES = [
@@ -72,6 +75,8 @@ const CUTOFF_HOURS = 48;
 const MAX_BOOKING_MONTHS_AHEAD = 6; // must match MAX_BOOKING_MONTHS_AHEAD in index.html
 const MAX_ITEM_QTY = 20;      // sanity cap per cake line
 const MAX_CART_ITEMS = 20;    // sanity cap on number of distinct cart lines in one order
+const GF_SURCHARGE = 7.50;    // per-cake charge for the no-added-gluten variant, in dollars — this is the authoritative value actually charged; index.html has a matching copy for display purposes only
+const CARD_SURCHARGE_RATE = 0.018; // 1.8% card processing surcharge, applied to (cake items + delivery fee) — this is the authoritative rate actually charged; index.html has a matching copy for display purposes only
 
 // RATE LIMITING — best-effort only. This Map lives at module scope, so it
 // persists for the lifetime of a warm Netlify function container, and is
@@ -222,7 +227,12 @@ exports.handler = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: `Please choose a quantity between 1 and ${MAX_ITEM_QTY} for each cake.` }) };
     }
     const glutenFree = !!(rawItem.glutenFree && cake.glutenFreeOption);
-    resolvedItems.push({ id: rawItem.cakeId, name: cake.name, price: cake.price, qty, glutenFree });
+    // The surcharge is added directly to the resolved price here, once —
+    // everything downstream (the Stripe line item amount) reads from
+    // this same value, so there's no separate place that could forget
+    // to add it.
+    const unitPrice = cake.price + (glutenFree ? GF_SURCHARGE : 0);
+    resolvedItems.push({ id: rawItem.cakeId, name: cake.name, price: unitPrice, qty, glutenFree });
   }
 
   // ---- 4. validate fulfilment + look up delivery fee server-side ----
@@ -273,8 +283,10 @@ exports.handler = async (event) => {
   params.append('customer_email', order.email);
 
   let lineIndex = 0;
+  let itemsSubtotalCents = 0;
   for (const item of resolvedItems) {
     const unitAmount = Math.round(item.price * 100);
+    itemsSubtotalCents += unitAmount * item.qty;
     const displayName = item.glutenFree ? `${item.name} (no added gluten)` : item.name;
     params.append(`line_items[${lineIndex}][price_data][currency]`, 'nzd');
     params.append(`line_items[${lineIndex}][price_data][product_data][name]`, displayName);
@@ -287,6 +299,19 @@ exports.handler = async (event) => {
     params.append(`line_items[${lineIndex}][price_data][currency]`, 'nzd');
     params.append(`line_items[${lineIndex}][price_data][product_data][name]`, `Delivery — ${suburb}`);
     params.append(`line_items[${lineIndex}][price_data][unit_amount]`, String(deliveryFeeCents));
+    params.append(`line_items[${lineIndex}][quantity]`, '1');
+    lineIndex++;
+  }
+
+  // Card surcharge — calculated on the true pre-surcharge total (cakes +
+  // delivery), never on itself, and always as its own clearly labelled
+  // line item so it's genuinely disclosed to the customer before they
+  // pay, not folded invisibly into another price.
+  const cardSurchargeCents = Math.round((itemsSubtotalCents + deliveryFeeCents) * CARD_SURCHARGE_RATE);
+  if (cardSurchargeCents > 0) {
+    params.append(`line_items[${lineIndex}][price_data][currency]`, 'nzd');
+    params.append(`line_items[${lineIndex}][price_data][product_data][name]`, `Card surcharge (${(CARD_SURCHARGE_RATE * 100).toFixed(1)}%)`);
+    params.append(`line_items[${lineIndex}][price_data][unit_amount]`, String(cardSurchargeCents));
     params.append(`line_items[${lineIndex}][quantity]`, '1');
     lineIndex++;
   }

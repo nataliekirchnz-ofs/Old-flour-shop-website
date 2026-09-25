@@ -11,6 +11,8 @@
 //   2. sends a branded order confirmation email to the customer
 //   3. logs the order as a row in Airtable, so staff can see upcoming
 //      orders in one place without digging through Stripe or email
+//   4. (via ClickSend) texts a new-order alert to the staff phone.
+//      Customers are NOT texted — they get the confirmation email only.
 //
 // Setup required (see README.md for the full walkthrough):
 //   1. Create a free account at https://resend.com, get an API key,
@@ -27,6 +29,10 @@
 //      below, get an API token, add AIRTABLE_API_KEY, AIRTABLE_BASE_ID
 //      and AIRTABLE_TABLE_NAME in Netlify — see README.md for the
 //      exact steps and field names to create
+//   5. (optional) For text messages, add CLICKSEND_USERNAME and
+//      CLICKSEND_API_KEY in Netlify. Alerts go to the staff phone
+//      (+64273399264), or BAKERY_SMS_NUMBER if set. The text is skipped
+//      if the ClickSend keys aren't set — emails and Airtable still work.
 
 const crypto = require('crypto');
 
@@ -74,6 +80,63 @@ async function isDuplicateInAirtable(sessionId, apiKey, baseId, tableName) {
   }
 }
 
+// ── SMS (ClickSend) ─────────────────────────────────────────────────────
+// Turns a NZ mobile in any common format ("027 339 9264", "+64 27...",
+// "6427...") into international format (+6427...). Returns '' for
+// anything that isn't a NZ mobile, so a mistyped number is skipped
+// rather than failing.
+function toNzMobile(raw) {
+  if (!raw) return '';
+  let digits = String(raw).replace(/[^\d+]/g, '');
+  if (digits.startsWith('+')) digits = digits.slice(1);
+  if (digits.startsWith('64')) digits = digits.slice(2);
+  if (digits.startsWith('0')) digits = digits.slice(1);
+  // NZ mobiles start with 2 (021, 022, 027, 028, 029...) and are 8–10
+  // digits after dropping the leading 0.
+  if (!/^2\d{7,9}$/.test(digits)) return '';
+  return '+64' + digits;
+}
+
+// Sends one text. Never throws — a failed text must not stop the rest of
+// the order processing, same as the emails.
+async function sendSms({ to, body, username, apiKey, from }) {
+  if (!to || !body) return;
+  body = toPlainSms(body);
+  try {
+    const message = { source: 'theoldflourshop-website', to, body };
+    if (from) message.from = from; // blank = ClickSend's shared number
+    const res = await fetch('https://rest.clicksend.com/v3/sms/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Basic ' + Buffer.from(`${username}:${apiKey}`).toString('base64'),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ messages: [message] })
+    });
+    const data = await res.json().catch(() => ({}));
+    const status = data?.data?.messages?.[0]?.status;
+    if (!res.ok || (status && status !== 'SUCCESS')) {
+      console.error('ClickSend error:', res.status, status || data?.response_code, data?.response_msg || '');
+    }
+  } catch (err) {
+    console.error('Failed to send SMS:', err);
+  }
+}
+
+// Characters like en dashes (–), curly quotes and emoji aren't in the
+// standard SMS alphabet. A single one switches the whole text to a
+// different encoding that only fits 70 characters per SMS instead of 160,
+// tripling the cost — so they're swapped for plain equivalents first.
+function toPlainSms(str) {
+  return String(str)
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u2026/g, '...')
+    .replace(/[^\x20-\x7E\n]/g, '');
+}
+
+
 function verifyStripeSignature(rawBody, sigHeader, secret) {
   if (!sigHeader) return false;
   const parts = Object.fromEntries(
@@ -110,6 +173,10 @@ exports.handler = async (event) => {
   // Emails need an absolute image URL (unlike the website, which can use
   // relative paths) — this must be your real live domain.
   const SITE_URL = process.env.SITE_URL || 'https://www.theoldflourshop.co.nz';
+  const CLICKSEND_USERNAME = process.env.CLICKSEND_USERNAME;
+  const CLICKSEND_API_KEY = process.env.CLICKSEND_API_KEY;
+  const CLICKSEND_FROM = process.env.CLICKSEND_FROM || ''; // optional dedicated number, e.g. +6421...
+  const BAKERY_SMS_NUMBER = process.env.BAKERY_SMS_NUMBER || '+64273399264'; // staff phone
 
   if (!STRIPE_WEBHOOK_SECRET || !RESEND_API_KEY) {
     console.error('Missing STRIPE_WEBHOOK_SECRET or RESEND_API_KEY environment variable.');
@@ -332,7 +399,28 @@ exports.handler = async (event) => {
     }
   }
 
-  // All three (bakery email, customer email, Airtable log) are logged
+  // ── Staff text alert (only if ClickSend is set up) ───────────────────
+  // Goes to the staff phone only, never to the customer. Plain text, not
+  // HTML, so the raw (unescaped) values are used here. No links, as
+  // ClickSend holds back texts containing URLs on new accounts.
+  if (CLICKSEND_USERNAME && CLICKSEND_API_KEY) {
+    const staffMobile = toNzMobile(BAKERY_SMS_NUMBER);
+    if (staffMobile) {
+      const when = [m.pickup_delivery_date, m.time_window].filter(Boolean).join(', ');
+      const fulfil = m.fulfilment === 'delivery' ? `Delivery (${m.suburb || '?'})` : 'Pickup';
+      await sendSms({
+        username: CLICKSEND_USERNAME,
+        apiKey: CLICKSEND_API_KEY,
+        from: CLICKSEND_FROM,
+        to: staffMobile,
+        body: `New order: ${m.order_summary || 'Cake'}. ${fulfil} ${when}. ${m.customer_name || ''} ${m.phone || ''}. $${amount} paid`
+      });
+    } else {
+      console.error('BAKERY_SMS_NUMBER is not a valid NZ mobile — skipped staff SMS.');
+    }
+  }
+
+  // All of the above (bakery email, customer email, Airtable log, staff text) are logged
   // above but never block Stripe's webhook response — Stripe only
   // needs to know we received the event.
   return { statusCode: 200, body: 'OK' };

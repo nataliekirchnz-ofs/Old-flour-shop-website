@@ -631,3 +631,40 @@ orders, or by date to see what's coming up next.
 
 ## Still worth adding later (not included yet)
 - **Refunds** — handled manually via the Stripe Dashboard for now.
+
+## Staff text alerts (ClickSend)
+
+When a payment succeeds, the webhook texts a new-order alert to the staff
+phone (**+64273399264**), e.g.:
+*"New order: 1x Key Lime Pie (no added gluten). Pickup Sat, 3 Oct 2026,
+10am - 12pm. Sarah Jones 021 123 4567. $136.50 paid"*
+
+Customers are **not** texted; they get the confirmation email only.
+
+If the ClickSend variables below aren't set, no text is sent and
+everything else works exactly as before.
+
+### Setup
+1. In ClickSend: **Developers → API Credentials**. Copy your API
+   username and API key.
+2. In Netlify → **Site configuration → Environment variables**, add:
+
+| Key | Value |
+|---|---|
+| `CLICKSEND_USERNAME` | your ClickSend API username |
+| `CLICKSEND_API_KEY` | your ClickSend API key |
+| `BAKERY_SMS_NUMBER` | *(optional)* only if alerts should go somewhere other than +64273399264 |
+| `CLICKSEND_FROM` | *(optional)* a dedicated ClickSend number in `+64...` format. Leave out to use ClickSend's shared number |
+
+3. Trigger a re-deploy so the function picks them up.
+4. Place a test order (Stripe test card `4242 4242 4242 4242`). The staff
+   phone should get the alert within a few seconds. If not, check
+   **Netlify → Logs → Functions → stripe-webhook** for a
+   `ClickSend error` line, and your ClickSend dashboard's SMS history.
+
+### Things to know
+- **Credit:** every alert uses ClickSend credit. Keep auto top-up on, or
+  alerts silently stop when the balance runs out (orders and emails
+  still work).
+- **No links:** ClickSend holds back texts containing web links on new
+  accounts, so the alert deliberately contains none.

@@ -486,7 +486,7 @@
           "@type": "MenuItem",
           "name": "Chocolate Celebration Cake",
           "description": "Layers of dark chocolate sponge and buttercream, finished naked style with a piped message on top — perfect for birthdays.",
-          "offers": { "@type": "Offer", "price": "120", "priceCurrency": "NZD" }
+          "offers": { "@type": "Offer", "price": "135", "priceCurrency": "NZD" }
         },
         {
           "@type": "MenuItem",
@@ -535,6 +535,18 @@
           "name": "Raspberry Crumble Cake",
           "description": "Buttery vanilla sponge studded with fresh raspberries under a golden brown sugar crumble.",
           "offers": { "@type": "Offer", "price": "100", "priceCurrency": "NZD" }
+        },
+        {
+          "@type": "MenuItem",
+          "name": "Boysenberry Cheesecake",
+          "description": "Baked New York-style cheesecake with a deep golden crust, topped with fresh boysenberry compote.",
+          "offers": { "@type": "Offer", "price": "125", "priceCurrency": "NZD" }
+        },
+        {
+          "@type": "MenuItem",
+          "name": "Key Lime Pie",
+          "description": "Key lime pie with a buttery biscuit crumb crust, smooth zesty lime filling. Bright, creamy and perfectly balanced between sweet and tangy.",
+          "offers": { "@type": "Offer", "price": "130", "priceCurrency": "NZD" }
         }
       ]
     }
@@ -601,7 +613,7 @@
         <div class="cake-tags"><span class="tag">House favourite</span><span class="tag">Custom Message Available</span></div>
         <p class="desc" style="flex:none;">Layers of dark chocolate sponge and buttercream, finished naked style with a piped message on top — perfect for birthdays.</p>
         <div class="cake-foot">
-          <div class="price-from">$120.00</div>
+          <div class="price-from">$135.00</div>
           <button class="btn btn-ghost" onclick="addCakeFromGrid('chocolate-cake')">Add to cart</button>
         </div>
       </div>
@@ -614,7 +626,7 @@
         <p class="desc" style="flex:none;">Baked New York-style cheesecake with a deep golden crust, topped with fresh raspberry compote.</p>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin:8px 0 0;">
            <input type="checkbox" id="cardGf-raspberry-cheesecake">
-           Prepare without added gluten
+           Prepare without added gluten (+$7.50)
          </label>
         <div class="cake-foot">
           <div class="price-from">$125.00</div>
@@ -626,7 +638,7 @@
       <div class="cake-thumb"><img src="images/chocolate-marquise.webp" alt="Chocolate Marquise" width="1200" height="900" loading="lazy"></div>
       <div class="cake-body">
         <h3>Chocolate Marquise</h3>
-        <div class="cake-tags"><span class="tag">Bestseller</span></div>
+        <div class="cake-tags"><span class="tag">Bestseller</span><span class="tag">No Added Gluten</span></div>
         <p class="desc" style="flex:none;">Rich chocolate marquise topped with soft caramel and a crown of torched meringue. Deeply chocolatey and indulgent.</p>
         <div class="cake-foot">
           <div class="price-from">$130.00</div>
@@ -654,7 +666,7 @@
         <p class="desc" style="flex:none;">Silky lemon mousse layered with bright lemon curd over a delicate crumb base. Fresh, light and beautifully tart.</p>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin:8px 0 0;">
            <input type="checkbox" id="cardGf-lemon-velvet">
-           Prepare without added gluten
+           Prepare without added gluten (+$7.50)
          </label>
         <div class="cake-foot">
           <div class="price-from">$120.00</div>
@@ -671,22 +683,6 @@
         <div class="cake-foot">
           <div class="price-from">$120.00</div>
           <button class="btn btn-ghost" onclick="addCakeFromGrid('orange-almond')">Add to cart</button>
-        </div>
-      </div>
-    </div>
-    <div class="cake-card">
-      <div class="cake-thumb"><img src="images/passionfruit-cheesecake.webp" alt="Passionfruit Cheesecake" width="1200" height="900" loading="lazy"></div>
-      <div class="cake-body">
-        <h3>Passionfruit Cheesecake</h3>
-        <div class="cake-tags"><span class="tag">Bestseller</span><span class="tag">No Added Gluten Option</span></div>
-        <p class="desc" style="flex:none;">Baked New York-style cheesecake with a deep golden crust, topped with fresh passionfruit pulp.</p>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin:8px 0 0;">
-           <input type="checkbox" id="cardGf-passionfruit-cheesecake">
-           Prepare without added gluten
-         </label>
-        <div class="cake-foot">
-          <div class="price-from">$125.00</div>
-          <button class="btn btn-ghost" onclick="addCakeFromGrid('passionfruit-cheesecake')">Add to cart</button>
         </div>
       </div>
     </div>
@@ -711,6 +707,54 @@
         <div class="cake-foot">
           <div class="price-from">$100.00</div>
           <button class="btn btn-ghost" onclick="addCakeFromGrid('raspberry-crumble')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><img src="images/passionfruit-cheesecake.webp" alt="Passionfruit Cheesecake" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-body">
+        <h3>Passionfruit Cheesecake</h3>
+        <div class="cake-tags"><span class="tag">Bestseller</span><span class="tag">No Added Gluten Option</span></div>
+        <p class="desc" style="flex:none;">Baked New York-style cheesecake with a deep golden crust, topped with fresh passionfruit pulp.</p>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin:8px 0 0;">
+           <input type="checkbox" id="cardGf-passionfruit-cheesecake">
+           Prepare without added gluten (+$7.50)
+         </label>
+        <div class="cake-foot">
+          <div class="price-from">$125.00</div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('passionfruit-cheesecake')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><img src="images/boysenberry-cheesecake.webp" alt="Boysenberry Cheesecake" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-body">
+        <h3>Boysenberry Cheesecake</h3>
+        <div class="cake-tags"><span class="tag">No Added Gluten Option</span></div>
+        <p class="desc" style="flex:none;">Baked New York-style cheesecake with a deep golden crust, topped with fresh boysenberry compote.</p>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin:8px 0 0;">
+           <input type="checkbox" id="cardGf-boysenberry-cheesecake">
+           Prepare without added gluten (+$7.50)
+         </label>
+        <div class="cake-foot">
+          <div class="price-from">$125.00</div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('boysenberry-cheesecake')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><img src="images/key-lime-pie.webp" alt="Key Lime Pie" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-body">
+        <h3>Key Lime Pie</h3>
+        <div class="cake-tags"><span class="tag">No Added Gluten Option</span></div>
+        <p class="desc" style="flex:none;">Key lime pie with a buttery biscuit crumb crust, smooth zesty lime filling. Bright, creamy and perfectly balanced between sweet and tangy.</p>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin:8px 0 0;">
+           <input type="checkbox" id="cardGf-key-lime-pie">
+           Prepare without added gluten (+$7.50)
+         </label>
+        <div class="cake-foot">
+          <div class="price-from">$130.00</div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('key-lime-pie')">Add to cart</button>
         </div>
       </div>
     </div>
@@ -838,7 +882,7 @@
         </div>
         <label id="addGlutenFreeWrap" style="display:none;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);margin-top:-6px;">
           <input type="checkbox" id="addGlutenFreeCheck">
-          Prepare without added gluten
+          Prepare without added gluten (+$7.50)
         </label>
       </div>
 
@@ -946,6 +990,8 @@ const CAKE_PHOTOS = {
   "raspberry-cheesecake": "images/raspberry-cheesecake.webp",
   "orange-almond": "images/orange-almond.webp",
   "raspberry-crumble": "images/raspberry-crumble.webp",
+  "boysenberry-cheesecake": "images/boysenberry-cheesecake.webp",
+  "key-lime-pie": "images/key-lime-pie.webp",
 };
 </script>
 <script>
@@ -964,7 +1010,7 @@ const CAKES = [
     name:'Chocolate Celebration Cake',
     tags:['House favourite','Custom Message Available'],
     desc:'Layers of dark chocolate sponge and buttercream, finished naked style with a piped message on top — perfect for birthdays.',
-    price:120,
+    price:135,
     photo:'chocolate-cake'
   },
   {
@@ -978,7 +1024,7 @@ const CAKES = [
   {
     id:'chocolate-marquise',
     name:'Chocolate Marquise',
-    tags:['Bestseller'],
+    tags:['Bestseller','No Added Gluten'],
     desc:'Rich chocolate marquise topped with soft caramel and a crown of torched meringue. Deeply chocolatey and indulgent.',
     price:130,
     photo:'chocolate-marquise'
@@ -1008,14 +1054,6 @@ const CAKES = [
     photo:'orange-almond'
   },
   {
-    id:'passionfruit-cheesecake',
-    name:'Passionfruit Cheesecake',
-    tags:['Bestseller','No Added Gluten Option'],
-    desc:'Baked New York-style cheesecake with a deep golden crust, topped with fresh passionfruit pulp.',
-    price:125,
-    photo:'passionfruit-cheesecake'
-  },
-  {
     id:'lemon-lover-cake',
     name:'Lemon Lover Cake',
     tags:['Custom Message Available'],
@@ -1031,6 +1069,30 @@ const CAKES = [
     price:100,
     photo:'raspberry-crumble'
   },
+  {
+    id:'passionfruit-cheesecake',
+    name:'Passionfruit Cheesecake',
+    tags:['Bestseller','No Added Gluten Option'],
+    desc:'Baked New York-style cheesecake with a deep golden crust, topped with fresh passionfruit pulp.',
+    price:125,
+    photo:'passionfruit-cheesecake'
+  },
+  {
+    id:'boysenberry-cheesecake',
+    name:'Boysenberry Cheesecake',
+    tags:['No Added Gluten Option'],
+    desc:'Baked New York-style cheesecake with a deep golden crust, topped with fresh boysenberry compote.',
+    price:125,
+    photo:'boysenberry-cheesecake'
+  },
+  {
+    id:'key-lime-pie',
+    name:'Key Lime Pie',
+    tags:['No Added Gluten Option'],
+    desc:'Key lime pie with a buttery biscuit crumb crust, smooth zesty lime filling. Bright, creamy and perfectly balanced between sweet and tangy.',
+    price:130,
+    photo:'key-lime-pie'
+  },
 ];
 const DELIVERY_ZONES = [
   { fee:15, suburbs:['Oneroa','Blackpool','Little Oneroa'] },
@@ -1040,6 +1102,8 @@ const DELIVERY_ZONES = [
 const CUTOFF_HOURS = 48;
 const MAX_BOOKING_MONTHS_AHEAD = 6; // must match MAX_BOOKING_MONTHS_AHEAD in create-checkout-session.js
 const MAX_ITEM_QTY_CLIENT = 20; // must match MAX_ITEM_QTY in create-checkout-session.js — the backend is authoritative, this is just for immediate UI feedback
+const GF_SURCHARGE = 7.50; // per-cake charge for the no-added-gluten variant — must match GF_SURCHARGE in create-checkout-session.js, which is the authoritative source for what's actually charged
+const CARD_SURCHARGE_RATE = 0.018; // 1.8% card surcharge, applied to (cakes + delivery) — must match CARD_SURCHARGE_RATE in create-checkout-session.js, which is the authoritative source for what's actually charged
 // Dates the bakery is closed / not taking orders — checked here for
 // immediate feedback, and separately (authoritatively) in
 // create-checkout-session.js. Keep both lists identical. Format: 'YYYY-MM-DD'.
@@ -1058,7 +1122,7 @@ function cakePhotoSrc(key){
   return (typeof CAKE_PHOTOS !== 'undefined' && CAKE_PHOTOS[key]) ? CAKE_PHOTOS[key] : '';
 }
 
-// The #cakeGrid div already contains real, static HTML for all 9 cakes
+// The #cakeGrid div already contains real, static HTML for all 11 cakes
 // directly in the page source (see index.html) — so search engines and
 // any non-JS crawler see genuine cake names/descriptions/prices
 // immediately, without needing to run this function at all. This
@@ -1075,7 +1139,7 @@ function buildCakeGrid(){
     const gfRow = c.tags.includes('No Added Gluten Option')
       ? `<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin:8px 0 0;">
            <input type="checkbox" id="cardGf-${c.id}">
-           Prepare without added gluten
+           Prepare without added gluten (+$7.50)
          </label>`
       : '';
     return `
@@ -1351,7 +1415,12 @@ function cartCount(){ return cart.reduce((n,i) => n + i.qty, 0); }
 // one side and not the other), what gets charged is always whatever
 // the backend calculates, never whatever this preview showed.
 function cartSubtotal(){
-  return cart.reduce((sum,i) => { const c = cakeById(i.cakeId); return sum + (c ? c.price * i.qty : 0); }, 0);
+  return cart.reduce((sum,i) => {
+    const c = cakeById(i.cakeId);
+    if(!c) return sum;
+    const unitPrice = c.price + (i.glutenFree ? GF_SURCHARGE : 0);
+    return sum + unitPrice * i.qty;
+  }, 0);
 }
 function updateCartBadge(){
   const n = cartCount();
@@ -1403,13 +1472,14 @@ function renderCartStep(){
   list.innerHTML = cart.map((item, index) => {
     const c = cakeById(item.cakeId);
     if(!c) return '';
-    const variantSuffix = item.glutenFree ? ' — no added gluten' : '';
+    const variantSuffix = item.glutenFree ? ` — no added gluten (+${fmt(GF_SURCHARGE)})` : '';
+    const unitPrice = c.price + (item.glutenFree ? GF_SURCHARGE : 0);
     return `
       <div class="cart-item">
         <img src="${cakePhotoSrc(c.photo)}" alt="${c.name}">
         <div class="cart-item-info">
           <div class="cart-item-name">${c.name}${variantSuffix}</div>
-          <div class="cart-item-price">${fmt(c.price)} each</div>
+          <div class="cart-item-price">${fmt(unitPrice)} each</div>
         </div>
         <div class="cart-item-actions">
           <div class="qty-stepper">
@@ -1959,8 +2029,9 @@ function updateDocket(){
   let rows = cart.map(item => {
     const c = cakeById(item.cakeId);
     if(!c) return '';
-    const gfSuffix = item.glutenFree ? ' <span style="color:var(--ink-soft);">(no added gluten)</span>' : '';
-    return `<div class="dk-row"><span class="dk-label">${item.qty}× ${c.name}${gfSuffix}</span><span>${fmt(c.price * item.qty)}</span></div>`;
+    const unitPrice = c.price + (item.glutenFree ? GF_SURCHARGE : 0);
+    const gfSuffix = item.glutenFree ? ` <span style="color:var(--ink-soft);">(no added gluten +${fmt(GF_SURCHARGE)} ea)</span>` : '';
+    return `<div class="dk-row"><span class="dk-label">${item.qty}× ${c.name}${gfSuffix}</span><span>${fmt(unitPrice * item.qty)}</span></div>`;
   }).join('');
   if(state.fulfil){
     let feeText;
@@ -1991,13 +2062,24 @@ function updateDocket(){
     if(state.message) rows += `<div class="dk-row"><span class="dk-label">MSG</span><span>"${escapeHtml(state.message)}"</span></div>`;
     if(state.notes) rows += `<div class="dk-row"><span class="dk-label">NOTES</span><span>${escapeHtml(state.notes)}</span></div>`;
   }
-  body.innerHTML = rows;
   // A null delivery fee (no valid suburb chosen yet) contributes 0 to this
   // running total display — the customer can't reach payment in that state
   // anyway (Step 2 blocks it), so this only ever shows during the brief
   // window while they're still choosing pickup/delivery and an area.
   const deliveryComponent = state.fulfil==='delivery' ? (currentDeliveryFee() || 0) : 0;
-  let total = cartSubtotal() + deliveryComponent;
+  // Card surcharge shown as its own disclosed row — genuinely visible to
+  // the customer before they pay, not folded silently into another
+  // price. Deliberately rounds in cents at each step (not once at the
+  // end in floating-point dollars) to exactly match how the backend
+  // computes the real charge — otherwise floating-point rounding can
+  // land this preview a cent off from what Stripe actually charges,
+  // which defeats the point of a preview.
+  const preSurchargeTotalCents = Math.round((cartSubtotal() + deliveryComponent) * 100);
+  const cardSurchargeCents = Math.round(preSurchargeTotalCents * CARD_SURCHARGE_RATE);
+  const cardSurcharge = cardSurchargeCents / 100;
+  rows += `<div class="dk-row"><span class="dk-label">CARD SURCHARGE (${(CARD_SURCHARGE_RATE*100).toFixed(1)}%)</span><span>${fmt(cardSurcharge)}</span></div>`;
+  body.innerHTML = rows;
+  let total = (preSurchargeTotalCents + cardSurchargeCents) / 100;
   document.getElementById('docketTotalVal').textContent = fmt(total);
   totalRow.style.display = 'flex';
 }
