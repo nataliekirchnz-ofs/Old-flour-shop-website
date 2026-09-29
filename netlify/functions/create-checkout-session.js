@@ -35,14 +35,14 @@
 // ─────────────────────────────────────────────────────────────────────
 
 const CAKES = {
-  'chocolate-cake':          { name: 'Chocolate Celebration Cake', price: 135, glutenFreeOption: false },
+  'chocolate-cake':          { name: 'Chocolate Celebration Cake', price: 135, glutenFreeOption: false, cakeMessage: true },
   'raspberry-cheesecake':    { name: 'Raspberry Cheesecake',       price: 125, glutenFreeOption: true },
   'chocolate-marquise':      { name: 'Chocolate Marquise',         price: 130, glutenFreeOption: false },
   'tiramisu-cake':           { name: 'Tiramisu Cake',              price: 115, glutenFreeOption: false },
   'lemon-velvet':            { name: 'Lemon Mousse Cake',          price: 120, glutenFreeOption: true },
   'orange-almond':           { name: 'Orange & Almond Cake',       price: 120, glutenFreeOption: false }, // naturally no added gluten already, not an "option"
   'passionfruit-cheesecake': { name: 'Passionfruit Cheesecake',    price: 125, glutenFreeOption: true },
-  'lemon-lover-cake':        { name: 'Lemon Lover Cake',           price: 115, glutenFreeOption: false },
+  'lemon-lover-cake':        { name: 'Lemon Lover Cake',           price: 115, glutenFreeOption: false, cakeMessage: true },
   'raspberry-crumble':       { name: 'Raspberry Crumble Cake',     price: 100, glutenFreeOption: false },
   'boysenberry-cheesecake':  { name: 'Boysenberry Cheesecake',     price: 125, glutenFreeOption: true },
   'key-lime-pie':            { name: 'Key Lime Pie',               price: 130, glutenFreeOption: true },
@@ -74,6 +74,41 @@ const BLACKOUT_DATES = ['2026-12-25', '2027-01-01'];
 const CUTOFF_HOURS = 48;
 const MAX_BOOKING_MONTHS_AHEAD = 6; // must match MAX_BOOKING_MONTHS_AHEAD in index.html
 const MAX_ITEM_QTY = 20;      // sanity cap per cake line
+
+// Length limits for the customer's details — generous for real names and
+// addresses, but stop junk (e.g. a 5,000-character "name") reaching Stripe,
+// the emails and Airtable. Must match the maxlength values in index.html.
+const MAX_NAME_LENGTH = 100;
+const MAX_EMAIL_LENGTH = 254;
+const MAX_PHONE_LENGTH = 30;
+const MAX_ADDRESS_LENGTH = 300;
+
+// Piped cake messages: only cakes marked cakeMessage: true above can
+// take one (must match the "Custom Message Available" tag in index.html),
+// one message per cake, up to this many characters each. Messages sent
+// for any other cake are ignored.
+const CAKE_MESSAGE_MAX = 30;
+// Only characters that can actually be piped — letters (including accented
+// and macron letters), numbers, spaces and everyday punctuation (including
+// curly apostrophes/quotes from phone keyboards). Emoji, symbols and
+// control characters are removed. Must match CAKE_MESSAGE_DISALLOWED in
+// index.html.
+const CAKE_MESSAGE_DISALLOWED = /[^\p{L}\p{M}\p{N} .,!?'\u2018\u2019"\u201C\u201D&\-\u2013\u2014():;\/+#@*%]/gu;
+// Hidden pieces some emoji are built from (e.g. the invisible marker in ❤️
+// or keycap 1️⃣). They'd otherwise pass as 'accents' and be left behind.
+const CAKE_MESSAGE_EMOJI_PARTS = /[\uFE00-\uFE0F\u20E3\u200D\u{E0100}-\u{E01EF}]/gu;
+
+// Returns the cleaned messages for one cart line: at most one per cake,
+// with emoji/symbols/line breaks removed, trimmed, capped at
+// CAKE_MESSAGE_MAX.
+function cleanCakeMessages(cake, rawMessages, qty) {
+  if (!cake.cakeMessage || !Array.isArray(rawMessages)) return [];
+  return rawMessages.slice(0, qty).map(msg =>
+    typeof msg === 'string'
+      ? msg.replace(/\s+/g, ' ').replace(CAKE_MESSAGE_EMOJI_PARTS, '').replace(CAKE_MESSAGE_DISALLOWED, '').replace(/ +/g, ' ').trim().slice(0, CAKE_MESSAGE_MAX)
+      : ''
+  );
+}
 const MAX_CART_ITEMS = 20;    // sanity cap on number of distinct cart lines in one order
 const GF_SURCHARGE = 7.50;    // per-cake charge for the no-added-gluten variant, in dollars — this is the authoritative value actually charged; index.html has a matching copy for display purposes only
 const CARD_SURCHARGE_RATE = 0.018; // 1.8% card processing surcharge, applied to (cake items + delivery fee) — this is the authoritative rate actually charged; index.html has a matching copy for display purposes only
@@ -227,6 +262,21 @@ exports.handler = async (event) => {
   } catch (e) {
     return { statusCode: 400, body: JSON.stringify({ error: 'Invalid request.' }) };
   }
+  // Must be a plain object — not null, a list, a number or a string.
+  if (!order || typeof order !== 'object' || Array.isArray(order)) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid request.' }) };
+  }
+  // Every text field is forced to be text. Anything else (a number, a list,
+  // an object) becomes '' and then fails the normal checks below with a
+  // clear message, rather than crashing the function.
+  const asText = v => (typeof v === 'string' ? v : '');
+  for (const field of ['fulfil', 'suburb', 'address', 'date', 'fname', 'lname', 'email', 'phone']) {
+    order[field] = asText(order[field]);
+  }
+  order.fname = order.fname.trim();
+  order.lname = order.lname.trim();
+  order.email = order.email.trim();
+  order.phone = order.phone.trim();
 
   // ---- 1 & 2 & 3. look up every cart line by ID; validate quantity; only honour "no added gluten" where actually offered ----
   if (!Array.isArray(order.items) || order.items.length === 0) {
@@ -238,7 +288,11 @@ exports.handler = async (event) => {
 
   const resolvedItems = [];
   for (const rawItem of order.items) {
-    const cake = CAKES[rawItem && rawItem.cakeId];
+    // hasOwnProperty, not just CAKES[id]: plain lookups also find built-in
+    // names every object has (like "toString" or "__proto__"), which would
+    // otherwise pass as a "cake" with no price.
+    const cakeId = rawItem && typeof rawItem.cakeId === 'string' ? rawItem.cakeId : '';
+    const cake = Object.prototype.hasOwnProperty.call(CAKES, cakeId) ? CAKES[cakeId] : null;
     if (!cake) {
       return { statusCode: 400, body: JSON.stringify({ error: 'One of the cakes in your cart is not recognised. Please refresh and try again.' }) };
     }
@@ -252,7 +306,8 @@ exports.handler = async (event) => {
     // this same value, so there's no separate place that could forget
     // to add it.
     const unitPrice = cake.price + (glutenFree ? GF_SURCHARGE : 0);
-    resolvedItems.push({ id: rawItem.cakeId, name: cake.name, price: unitPrice, qty, glutenFree });
+    const messages = cleanCakeMessages(cake, rawItem.messages, qty);
+    resolvedItems.push({ id: rawItem.cakeId, name: cake.name, price: unitPrice, qty, glutenFree, messages });
   }
 
   // ---- 4. validate fulfilment + look up delivery fee server-side ----
@@ -270,7 +325,10 @@ exports.handler = async (event) => {
     }
     deliveryFeeCents = fee * 100;
 
-    if (!order.address || typeof order.address !== 'string' || order.address.trim().length < 4) {
+    if (order.address.trim().length > MAX_ADDRESS_LENGTH) {
+      return { statusCode: 400, body: JSON.stringify({ error: `Please keep the delivery address under ${MAX_ADDRESS_LENGTH} characters.` }) };
+    }
+    if (order.address.trim().length < 4) {
       return { statusCode: 400, body: JSON.stringify({ error: 'Please enter a delivery address.' }) };
     }
   }
@@ -284,7 +342,13 @@ exports.handler = async (event) => {
   }
 
   // ---- 6. validate customer details ----
-  if (!order.fname || !order.fname.trim() || !order.lname || !order.lname.trim()) {
+  if (order.fname.length > MAX_NAME_LENGTH || order.lname.length > MAX_NAME_LENGTH) {
+    return { statusCode: 400, body: JSON.stringify({ error: `Please keep your first and last name under ${MAX_NAME_LENGTH} characters each.` }) };
+  }
+  if (order.email.length > MAX_EMAIL_LENGTH || order.phone.length > MAX_PHONE_LENGTH) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Please check your email address and phone number.' }) };
+  }
+  if (!order.fname || !order.lname) {
     return { statusCode: 400, body: JSON.stringify({ error: 'Please enter your first and last name.' }) };
   }
   if (!isValidEmail(order.email)) {
@@ -328,6 +392,8 @@ exports.handler = async (event) => {
   // line item so it's genuinely disclosed to the customer before they
   // pay, not folded invisibly into another price.
   const cardSurchargeCents = Math.round((itemsSubtotalCents + deliveryFeeCents) * CARD_SURCHARGE_RATE);
+  // The "no added gluten" extras, kept separately for the email breakdown.
+  const gfExtraCents = resolvedItems.reduce((sum, i) => sum + (i.glutenFree ? Math.round(GF_SURCHARGE * 100) * i.qty : 0), 0);
   if (cardSurchargeCents > 0) {
     params.append(`line_items[${lineIndex}][price_data][currency]`, 'nzd');
     params.append(`line_items[${lineIndex}][price_data][product_data][name]`, `Credit Card Surcharge (${(CARD_SURCHARGE_RATE * 100).toFixed(1)}%)`);
@@ -341,6 +407,24 @@ exports.handler = async (event) => {
   const orderSummary = resolvedItems
     .map(i => `${i.qty}x ${i.name}${i.glutenFree ? ' (no added gluten)' : ''}`)
     .join(', ');
+
+  // All piped messages in one readable line for the emails and Airtable,
+  // e.g. 'Chocolate Celebration Cake: "Happy 30th Sarah" | Lemon Lover
+  // Cake: "Congrats Mum"'. With more than one of the same cake, each is
+  // numbered ("Chocolate Celebration Cake 1: ..., ... 2: ...").
+  const cakeMessages = [];
+  resolvedItems.forEach(item => {
+    item.messages.forEach((msg, i) => {
+      if (msg) cakeMessages.push(`${item.name}${item.qty > 1 ? ` ${i + 1}` : ''}: "${msg}"`);
+    });
+  });
+  const cakeMessageText = cakeMessages.join(' | ');
+  // Stripe only stores 500 characters per detail, so rather than silently
+  // cutting messages off, a (very large) order that goes over is stopped
+  // with a clear message instead.
+  if (cakeMessageText.length > 490) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'That\'s more cake messages than we can take online in one order. Please contact us and we\'ll sort it out directly.' }) };
+  }
 
   // Order details attached as metadata so they show up in the Stripe Dashboard
   // and in the webhook payload. These are for display only — never used to
@@ -363,8 +447,14 @@ exports.handler = async (event) => {
     time_window: TIME_WINDOWS[order.fulfil] || '',
     customer_name: `${order.fname} ${order.lname}`,
     phone: order.phone || '',
-    cake_message: (order.message || '').trim(),
-    allergy_notes: (order.notes || '').trim()
+    cake_message: cakeMessageText,
+    // Price breakdown (in cents) so the confirmation email can show how
+    // the total is made up. Display only — the charge itself comes from
+    // the line items above.
+    price_cakes_cents: String(itemsSubtotalCents - gfExtraCents),
+    price_gf_cents: String(gfExtraCents),
+    price_delivery_cents: String(deliveryFeeCents),
+    price_surcharge_cents: String(cardSurchargeCents)
   };
   Object.entries(metadata).forEach(([key, value]) => {
     params.append(`metadata[${key}]`, String(value).slice(0, 490)); // Stripe metadata values cap at 500 chars

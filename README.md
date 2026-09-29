@@ -7,7 +7,7 @@ with real, securely-processed card payments through Stripe.
 index.html                          the website
 images/                              all photos (must stay next to the HTML file)
 netlify/functions/                   three serverless functions (see below)
-netlify.toml                         tells Netlify where the functions live
+netlify.toml                         tells Netlify where the functions live, plus the site's security settings
 robots.txt                           tells search engines they can crawl the site
 sitemap.xml                          lists the page for search engines
 ```
@@ -23,6 +23,65 @@ The three functions:
   payment succeeds, and it sends the order-confirmation emails. This
   is the authoritative trigger for "an order happened," independent
   of whether the customer's browser makes it back to your site.
+
+## How the site works now (current as of 29 September 2026)
+
+**This section is the source of truth.** Further down, the sections
+headed "History" record earlier rounds of changes; some of what they
+describe has since been changed or removed. Where they disagree with
+this section, this section is right.
+
+**Menu:** 11 cakes, each a single flat price. The no-added-gluten
+option (+$7.50) is offered on Raspberry Cheesecake, Lemon Mousse Cake,
+Passionfruit Cheesecake, Boysenberry Cheesecake and Key Lime Pie
+(`glutenFreeOption: true`). Orange & Almond Cake and Chocolate Marquise
+are tagged "Made Without Added Gluten" and have no checkbox.
+
+**Cake messages:** only the Chocolate Celebration Cake and Lemon Lover
+Cake take a piped message (tag "Custom Message Available" in
+`index.html`, `cakeMessage: true` in `create-checkout-session.js`).
+Each of those cakes gets its own optional message box in the cart,
+up to 30 characters. Emoji and symbols are removed as they're typed;
+letters (including macrons and accents), numbers and everyday
+punctuation are allowed. The server applies the same rules and ignores
+messages sent for any other cake. All messages reach the emails and
+Airtable as one line, e.g. `Chocolate Celebration Cake: "Happy 30th
+Sarah" | Lemon Lover Cake: "Congrats Mum"`.
+
+**No allergies box.** It was removed on purpose. Allergen information
+is shown in the menu's "Allergen information" section and repeated in
+the customer's confirmation email, asking anyone with a serious allergy
+to contact the bakery.
+
+**Checkout checks (website and server both):** email must look complete
+(e.g. `name@gmail.com`, not `name@gmail`); first and last name up to 100
+characters each; delivery address up to 300; phone 7 to 15 digits. The
+earliest bookable date is decided in New Zealand time; Christmas Day and
+New Year's Day are blocked (`BLACKOUT_DATES`).
+
+**At Stripe:** one line per cake (gluten-free versions named
+"(no added gluten)" and priced with the extra included), a delivery
+line if delivering, and a "Credit Card Surcharge (1.8%)" line.
+
+**After payment (`stripe-webhook.js`), in this order:**
+1. The order is saved to Airtable.
+2. The bakery gets an order email. Hitting Reply on it writes straight
+   to the customer.
+3. The customer gets a confirmation email: their cakes, any cake
+   messages, a price breakdown (cakes, no added gluten, delivery,
+   Credit Card Surcharge, total), pickup or delivery details, and the
+   allergen note. Their replies go to theoldflourshop@gmail.com.
+
+See "If something goes wrong saving an order" at the end for what
+happens when Airtable or the email service has a problem.
+
+**No text messages.** ClickSend was tried and removed; nothing sends SMS.
+
+**Security settings** live in `netlify.toml`. They only allow the site
+to load its own files plus Google Fonts. If you ever add something
+from another website (an Instagram feed, Google Analytics, an embedded
+map), it must be added to the `Content-Security-Policy` line there too,
+or it won't load.
 
 ## What changed from the demo version
 
@@ -51,6 +110,17 @@ arrays (what customers see) and the matching object near the top of
 delivery fee, update both files.** If you only update `index.html`,
 the website will show a new price but customers will still be charged
 the old one — worth checking after every menu change.
+
+The same applies to these settings, which also exist in both files and
+must match: `GF_SURCHARGE` (no-added-gluten extra), `CARD_SURCHARGE_RATE`
+(1.8%), `BLACKOUT_DATES` (closed days), `CUTOFF_HOURS` (notice needed),
+`MAX_BOOKING_MONTHS_AHEAD`, which cakes offer gluten-free and which take
+a cake message, and the cake-message character rules.
+
+**Also typed into the page text** (so they don't change by themselves
+when the settings above change — search `index.html` for them):
+"+$7.50" (several places), "1.8%" (How it works, step 3), "from $15"
+(delivery option), "48 hours" and "7:30am to 3pm".
 
 ## One-time setup
 
@@ -164,11 +234,13 @@ Stripe's payment page, not one lump sum.
 ## What's in the Stripe payment
 Each cake in the cart becomes its own line item (with its own quantity),
 and — if delivery was chosen — the delivery fee is added as one more
-line item. The customer's full order details (a plain-text summary of
-everything in the cart, pickup/delivery date, time window, address if
-delivering, cake message, allergy notes, phone number) are attached to
-the payment as **metadata**, visible when you open that payment in your
-Stripe Dashboard.
+line item, and the Credit Card Surcharge (1.8% of cakes plus delivery)
+is its own line item too. The customer's full order details (a
+plain-text summary of everything in the cart, pickup/delivery date,
+time window, address if delivering, any cake messages, phone number,
+and the price breakdown used in the confirmation email) are attached
+to the payment as **metadata**, visible when you open that payment in
+your Stripe Dashboard.
 
 ## Getting automatic order emails
 
@@ -176,10 +248,13 @@ By default, Stripe just logs a successful payment in your Dashboard —
 nothing gets emailed to anyone. This package includes a second function
 that fixes that: the moment a payment succeeds, Stripe notifies it
 directly, and it sends **two emails**:
-1. To the **bakery** — full order details (cake, date, pickup/delivery,
-   address, cake message, allergy notes, phone)
+1. To the **bakery** — full order details (cakes, date, pickup/delivery,
+   address, cake messages, phone, email). Hitting Reply writes straight
+   to the customer.
 2. To the **customer** — a branded confirmation of their order with the
-   same key details, plus your contact info if they need to make a change
+   same key details, a price breakdown, the allergen note, and your
+   contact info if they need to make a change. Their replies go to
+   theoldflourshop@gmail.com.
 
 This uses **Resend** (a straightforward email-sending service with a
 generous free tier) to actually send both.
@@ -223,12 +298,11 @@ and any error returned, which is the fastest way to debug this if
 something's not quite right.
 
 ### About the "from" address
-Emails currently send from `onboarding@resend.dev`, which works
-immediately with no setup — but it's a shared Resend address, not
-yours. Once you're ready, you can verify your own domain in Resend
-(if you have one, e.g. `theoldflourshop.co.nz`) so emails come from
-something like `orders@theoldflourshop.co.nz` instead — more
-professional, and less likely to land in spam.
+Emails send from `orders@theoldflourshop.co.nz`, using your own domain
+verified in Resend. That address can send but can't receive, which is
+why every email sets a separate reply address (see above). If the
+domain ever stops being verified in Resend, emails will stop sending,
+so keep the domain's DNS records in place.
 
 ## Tracking orders in Airtable
 
@@ -248,6 +322,7 @@ this week — in one place, without touching Stripe.
 
 | Field name | Type |
 |---|---|
+| Name | Airtable's default first (primary) column — keep it called "Name" |
 | Cake | Single line text |
 | Fulfilment | Single line text |
 | Pickup/Delivery Date | Single line text |
@@ -258,7 +333,6 @@ this week — in one place, without touching Stripe.
 | Phone | Phone number (or single line text) |
 | Email | Email |
 | Cake Message | Single line text |
-| Allergy Notes | Long text |
 | Amount Paid | Currency or Number |
 | Stripe Session ID | Single line text |
 
@@ -266,9 +340,14 @@ A **Created time** field (Airtable's built-in field type) is worth
 adding too, so you automatically get an "order placed at" timestamp
 without this code needing to send one.
 
-*(Field names must match exactly, including spacing and capitalisation
-— Airtable won't create missing fields automatically, it'll just fail
-to log that field silently.)*
+*(Field names must match exactly, including spacing and capitalisation.
+If even one of these columns is missing, renamed or deleted, **Airtable
+rejects the whole order**, not just that field. The site then still
+emails the order to the bakery, with "⚠️ NOT IN AIRTABLE" in the
+subject and a warning box, so nothing is lost, but the order has to be
+added to Airtable by hand. Extra columns of your own are fine. An old
+"Allergy Notes" column, from before the allergies box was removed, can
+stay: it's simply left empty now.)*
 
 ### 2. Get your API credentials
 1. In Airtable: click your account icon → **Developer hub** → **Personal
@@ -295,7 +374,10 @@ Make a test payment. Within a few seconds a new row should appear in
 your Airtable base. If it doesn't, check **Stripe Dashboard →
 Webhooks → [your endpoint] → recent attempts**, and also the function
 logs in Netlify (**Functions → stripe-webhook → real-time logs**) —
-Airtable errors (like a mismatched field name) get logged there.
+Airtable errors (like a mismatched field name) get logged there. A
+bakery email with "⚠️ NOT IN AIRTABLE" in the subject also means
+Airtable's columns or access token don't match (see the note under
+the table above).
 
 ### What staff actually see day-to-day
 Once orders are landing in Airtable, switch the table to **Calendar
@@ -304,7 +386,12 @@ week-at-a-glance view of what's due when, which is the main thing this
 was for. Sort/filter by Fulfilment to separate pickup from delivery
 orders, or by date to see what's coming up next.
 
-## Latest round of fixes
+## History: an earlier round of fixes
+
+*(Kept as a record. Some of what's described here has since changed,
+for example the single order-message box and the allergies/notes box
+no longer exist. See "How the site works now" near the top for the
+current behaviour.)*
 
 - **The docket now updates live while typing**, not just after leaving a
   step. Name, email, phone, delivery address, message, and notes were
@@ -539,7 +626,12 @@ orders, or by date to see what's coming up next.
   phone against real format checks. None of this can be bypassed from
   the frontend alone — see the numbered comments directly in that file.
 
-## Production-readiness fixes in this version
+## History: production-readiness fixes (earlier version)
+
+*(Kept as a record. Some details are out of date, for example cake
+messages are now per cake, the notes box is gone, and the closed dates
+are Christmas Day and New Year's Day only. See "How the site works
+now" near the top for the current behaviour.)*
 
 - **Cart quantity cap can no longer be bypassed.** Clicking "Add to
   cart" repeatedly (rather than using the +/− stepper) used to be able
@@ -638,54 +730,24 @@ orders, or by date to see what's coming up next.
 ## Still worth adding later (not included yet)
 - **Refunds** — handled manually via the Stripe Dashboard for now.
 
-## Staff text alerts (ClickSend)
-
-When a payment succeeds, the webhook texts a new-order alert to the staff
-phone (**+64273399264**), e.g.:
-*"New order: 1x Key Lime Pie (no added gluten). Pickup Sat, 3 Oct 2026,
-10am - 12pm. Sarah Jones 021 123 4567. $136.50 paid"*
-
-Customers are **not** texted; they get the confirmation email only.
-
-If the ClickSend variables below aren't set, no text is sent and
-everything else works exactly as before.
-
-### Setup
-1. In ClickSend: **Developers → API Credentials**. Copy your API
-   username and API key.
-2. In Netlify → **Site configuration → Environment variables**, add:
-
-| Key | Value |
-|---|---|
-| `CLICKSEND_USERNAME` | your ClickSend API username |
-| `CLICKSEND_API_KEY` | your ClickSend API key |
-| `BAKERY_SMS_NUMBER` | *(optional)* only if alerts should go somewhere other than +64273399264 |
-| `CLICKSEND_FROM` | *(optional)* a dedicated ClickSend number in `+64...` format. Leave out to use ClickSend's shared number |
-
-3. Trigger a re-deploy so the function picks them up.
-4. Place a test order (Stripe test card `4242 4242 4242 4242`). The staff
-   phone should get the alert within a few seconds. If not, check
-   **Netlify → Logs → Functions → stripe-webhook** for a
-   `ClickSend error` line, and your ClickSend dashboard's SMS history.
-
-### Things to know
-- **Credit:** every alert uses ClickSend credit. Keep auto top-up on, or
-  alerts silently stop when the balance runs out (orders and emails
-  still work).
-- **No links:** ClickSend holds back texts containing web links on new
-  accounts, so the alert deliberately contains none.
-
 ## If something goes wrong saving an order
 
 When a payment succeeds, the webhook saves the order record first:
 Airtable if it's set up, otherwise the bakery email. If that step fails
 (for example Airtable or Resend is briefly down), the webhook tells Stripe
 so, and **Stripe automatically tries again**, repeatedly for up to 3 days.
-Nothing is emailed or texted until the order has been saved, so a retry
+Nothing is emailed until the order has been saved, so a retry
 never sends double emails.
 
-The customer email and staff text are sent after that, and a failure
-there is logged but doesn't trigger a retry.
+**If Airtable refuses the order because of how it's set up** (a column
+renamed or deleted, the table renamed, or the access token changed),
+retrying can't help, so the site doesn't. Instead the bakery email
+becomes the record: it arrives with "⚠️ NOT IN AIRTABLE" in the subject
+and a red box asking you to add the order to Airtable by hand. (If that
+email can't be sent either, Stripe retries as above.)
+
+The customer email is sent after that, and a failure there is logged
+but doesn't trigger a retry.
 
 You can see any retries in **Stripe Dashboard → Developers → Webhooks →
 your endpoint**, where failed attempts show in red with the time of the

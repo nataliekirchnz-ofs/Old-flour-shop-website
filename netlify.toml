@@ -1,3 +1,28 @@
 [build]
   publish = "."
   functions = "netlify/functions"
+
+# ── Security settings, sent with every page ──────────────────────────────
+# Standard protections most websites use. None of them change how the site
+# looks or works for customers.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Stops other websites showing this site inside their own page (a trick
+    # used to fool people into clicking things, e.g. on the checkout).
+    X-Frame-Options = "DENY"
+    # Stops browsers guessing a file's type (e.g. treating an image as code).
+    X-Content-Type-Options = "nosniff"
+    # When a customer clicks a link to another site (Instagram, Google Maps),
+    # only "theoldflourshop.co.nz" is shared with it, never the full page
+    # address, which can include an order reference after payment.
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # The site never needs the camera, microphone, location or payment
+    # features of the browser, so they're switched off entirely.
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+    # Only load things from this site itself, plus Google Fonts. Anything
+    # else (e.g. a script injected from somewhere else) is blocked.
+    # IF YOU EVER ADD something from another site — an Instagram feed,
+    # Google Analytics, an embedded map — it must be added here too, or it
+    # won't load.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"

@@ -11,8 +11,6 @@
 //   2. sends a branded order confirmation email to the customer
 //   3. logs the order as a row in Airtable, so staff can see upcoming
 //      orders in one place without digging through Stripe or email
-//   4. (via ClickSend) texts a new-order alert to the staff phone.
-//      Customers are NOT texted — they get the confirmation email only.
 //
 // Setup required (see README.md for the full walkthrough):
 //   1. Create a free account at https://resend.com, get an API key,
@@ -30,14 +28,10 @@
 //      below, get an API token, add AIRTABLE_API_KEY, AIRTABLE_BASE_ID
 //      and AIRTABLE_TABLE_NAME in Netlify — see README.md for the
 //      exact steps and field names to create
-//   5. (optional) For text messages, add CLICKSEND_USERNAME and
-//      CLICKSEND_API_KEY in Netlify. Alerts go to the staff phone
-//      (+64273399264), or BAKERY_SMS_NUMBER if set. The text is skipped
-//      if the ClickSend keys aren't set — emails and Airtable still work.
 
 const crypto = require('crypto');
 
-// The values below (customer name, phone, cake message, allergy notes,
+// The values below (customer name, phone, cake message,
 // delivery address) are all free text the customer typed at checkout.
 // They're embedded directly into HTML email templates further down, so
 // they're escaped first — otherwise something like `<a href=...>` typed
@@ -80,63 +74,6 @@ async function isDuplicateInAirtable(sessionId, apiKey, baseId, tableName) {
     return false;
   }
 }
-
-// ── SMS (ClickSend) ─────────────────────────────────────────────────────
-// Turns a NZ mobile in any common format ("027 339 9264", "+64 27...",
-// "6427...") into international format (+6427...). Returns '' for
-// anything that isn't a NZ mobile, so a mistyped number is skipped
-// rather than failing.
-function toNzMobile(raw) {
-  if (!raw) return '';
-  let digits = String(raw).replace(/[^\d+]/g, '');
-  if (digits.startsWith('+')) digits = digits.slice(1);
-  if (digits.startsWith('64')) digits = digits.slice(2);
-  if (digits.startsWith('0')) digits = digits.slice(1);
-  // NZ mobiles start with 2 (021, 022, 027, 028, 029...) and are 8–10
-  // digits after dropping the leading 0.
-  if (!/^2\d{7,9}$/.test(digits)) return '';
-  return '+64' + digits;
-}
-
-// Sends one text. Never throws — a failed text must not stop the rest of
-// the order processing, same as the emails.
-async function sendSms({ to, body, username, apiKey, from }) {
-  if (!to || !body) return;
-  body = toPlainSms(body);
-  try {
-    const message = { source: 'theoldflourshop-website', to, body };
-    if (from) message.from = from; // blank = ClickSend's shared number
-    const res = await fetch('https://rest.clicksend.com/v3/sms/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Basic ' + Buffer.from(`${username}:${apiKey}`).toString('base64'),
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ messages: [message] })
-    });
-    const data = await res.json().catch(() => ({}));
-    const status = data?.data?.messages?.[0]?.status;
-    if (!res.ok || (status && status !== 'SUCCESS')) {
-      console.error('ClickSend error:', res.status, status || data?.response_code, data?.response_msg || '');
-    }
-  } catch (err) {
-    console.error('Failed to send SMS:', err);
-  }
-}
-
-// Characters like en dashes (–), curly quotes and emoji aren't in the
-// standard SMS alphabet. A single one switches the whole text to a
-// different encoding that only fits 70 characters per SMS instead of 160,
-// tripling the cost — so they're swapped for plain equivalents first.
-function toPlainSms(str) {
-  return String(str)
-    .replace(/[\u2013\u2014]/g, '-')
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/\u2026/g, '...')
-    .replace(/[^\x20-\x7E\n]/g, '');
-}
-
 
 // How old a Stripe message can be before it's rejected. Stripe's own
 // libraries use 5 minutes. This stops an old, genuine message that someone
@@ -191,10 +128,6 @@ exports.handler = async (event) => {
   // Emails need an absolute image URL (unlike the website, which can use
   // relative paths) — this must be your real live domain.
   const SITE_URL = process.env.SITE_URL || 'https://www.theoldflourshop.co.nz';
-  const CLICKSEND_USERNAME = process.env.CLICKSEND_USERNAME;
-  const CLICKSEND_API_KEY = process.env.CLICKSEND_API_KEY;
-  const CLICKSEND_FROM = process.env.CLICKSEND_FROM || ''; // optional dedicated number, e.g. +6421...
-  const BAKERY_SMS_NUMBER = process.env.BAKERY_SMS_NUMBER || '+64273399264'; // staff phone
 
   if (!STRIPE_WEBHOOK_SECRET || !RESEND_API_KEY) {
     console.error('Missing STRIPE_WEBHOOK_SECRET or RESEND_API_KEY environment variable.');
@@ -265,39 +198,45 @@ exports.handler = async (event) => {
   const safeDate = escapeHtml(m.pickup_delivery_date);
   const safeTime = escapeHtml(m.time_window);
   const safeSuburb = escapeHtml(m.suburb);
-  const safeFulfilment = escapeHtml(m.fulfilment);
+  const safeFulfilment = m.fulfilment === 'delivery' ? 'Delivery' : m.fulfilment === 'pickup' ? 'Pickup' : escapeHtml(m.fulfilment);
   const safeCustomerName = escapeHtml(m.customer_name);
   const safePhone = escapeHtml(m.phone);
   const safeDeliveryAddress = escapeHtml(m.delivery_address);
   const safeCakeMessage = escapeHtml(m.cake_message);
-  const safeAllergyNotes = escapeHtml(m.allergy_notes);
   const customerFirstName = escapeHtml((m.customer_name || '').split(' ')[0] || 'there');
 
-  const bakeryEmailHtml = `
-    <div style="font-family:sans-serif;font-size:15px;color:#2B3C25;line-height:1.6;">
-      <h2 style="margin:0 0 12px;">New cake order — ${safeSummary || 'Unknown cake'}</h2>
-      <p style="margin:0 0 16px;"><strong>Total paid:</strong> $${amount} ${currency}</p>
-      <table style="border-collapse:collapse;width:100%;max-width:480px;">
-        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Customer</td><td>${safeCustomerName}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Phone</td><td>${safePhone}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Email</td><td>${safeCustomerEmail}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Cake</td><td>${safeSummary}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Fulfilment</td><td>${safeFulfilment}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Date</td><td>${safeDate}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Time window</td><td>${safeTime}</td></tr>
-        ${m.fulfilment === 'delivery' ? `
-        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Suburb</td><td>${safeSuburb}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Delivery address</td><td>${safeDeliveryAddress}</td></tr>
-        ` : ''}
-        ${m.cake_message ? `<tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Cake message</td><td>"${safeCakeMessage}"</td></tr>` : ''}
-        ${m.allergy_notes ? `<tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Allergy notes</td><td>${safeAllergyNotes}</td></tr>` : ''}
-      </table>
-      <p style="margin-top:20px;font-size:13px;color:#5F6350;">Full payment details are also in your Stripe Dashboard under Payments.</p>
-    </div>
-  `;
+  // How the total is made up (cakes, no-added-gluten extras, delivery,
+  // card surcharge), from the figures the checkout function stored.
+  // Only shown if they add up exactly to what Stripe actually charged —
+  // otherwise (e.g. an order placed before this was added) the email
+  // just shows the total, as before.
+  const cents = key => {
+    const n = Number(m[key]);
+    return Number.isInteger(n) && n >= 0 ? n : null;
+  };
+  const money = c => `$${(c / 100).toFixed(2)}`;
+  const parts = {
+    cakes: cents('price_cakes_cents'),
+    gf: cents('price_gf_cents'),
+    delivery: cents('price_delivery_cents'),
+    surcharge: cents('price_surcharge_cents')
+  };
+  const haveBreakdown = Object.values(parts).every(v => v !== null)
+    && parts.cakes + parts.gf + parts.delivery + parts.surcharge === (session.amount_total || 0);
+  const row = (label, value, strong) => `<tr><td style="padding:3px 12px 3px 0;color:#5F6350;">${label}</td><td style="text-align:right;white-space:nowrap;">${strong ? `<strong>${value}</strong>` : value}</td></tr>`;
+  const priceBreakdownHtml = haveBreakdown
+    ? [
+        row('Cakes', money(parts.cakes)),
+        parts.gf ? row('No added gluten', money(parts.gf)) : '',
+        parts.delivery ? row(`Delivery${m.suburb ? ` (${safeSuburb})` : ''}`, money(parts.delivery)) : '',
+        parts.surcharge ? row('Credit Card Surcharge', money(parts.surcharge)) : '',
+        row('Total paid', `$${amount} ${currency}`, true)
+      ].join('')
+    : row('Total paid', `$${amount} ${currency}`);
+
 
   const fulfilLine = m.fulfilment === 'delivery'
-    ? `We'll deliver your cake to <strong>${safeDeliveryAddress || 'your address'}</strong> (${safeSuburb || 'Waiheke Island'}) on <strong>${safeDate}</strong>. ${safeTime ? `Delivery time: ${safeTime}.` : ''}`
+    ? `We'll deliver your cake to <strong>${safeDeliveryAddress || 'your address'}</strong> (${safeSuburb || 'Waiheke Island'}) on <strong>${safeDate}</strong>. We'll be in touch to confirm a delivery time.`
     : `Your cake will be ready for pickup from our Oneroa bakery on <strong>${safeDate}</strong>. ${safeTime ? safeTime + '.' : ''}`;
 
   const customerEmailHtml = `
@@ -310,12 +249,18 @@ exports.handler = async (event) => {
 
       <table style="border-collapse:collapse;width:100%;margin-bottom:16px;">
         <tr><td style="padding:6px 12px 6px 0;color:#5F6350;">Cake</td><td><strong>${safeSummary}</strong></td></tr>
-        <tr><td style="padding:6px 12px 6px 0;color:#5F6350;">Total paid</td><td>$${amount} ${currency}</td></tr>
-        ${m.cake_message ? `<tr><td style="padding:6px 12px 6px 0;color:#5F6350;">Cake message</td><td>"${safeCakeMessage}"</td></tr>` : ''}
-        ${m.allergy_notes ? `<tr><td style="padding:6px 12px 6px 0;color:#5F6350;">Notes we have</td><td>${safeAllergyNotes}</td></tr>` : ''}
+        ${m.cake_message ? `<tr><td style="padding:6px 12px 6px 0;color:#5F6350;">Cake message</td><td>${safeCakeMessage}</td></tr>` : ''}
+      </table>
+
+      <table style="border-collapse:collapse;width:100%;max-width:340px;margin:0 0 20px;border-top:1px solid #E3E1D6;padding-top:6px;">
+        ${priceBreakdownHtml}
       </table>
 
       <p style="margin:0 0 20px;">${fulfilLine}</p>
+
+      <p style="margin:0 0 20px;padding:10px 12px;background:#F4F2EA;border-radius:6px;color:#5F6350;font-size:12.5px;line-height:1.5;">
+        <strong>Allergen information:</strong> selected cakes can be made without gluten-containing ingredients. Please note that our bakery handles wheat, nuts, dairy, eggs and other allergens in a small shared kitchen, so we cannot guarantee that any product is completely free from allergens or cross-contact. If you have a serious allergy, please contact us before your order date.
+      </p>
 
       <p style="margin:0 0 6px;color:#5F6350;font-size:13px;">Need to change anything about your order? Just reply to this email or contact us:</p>
       <p style="margin:0 0 24px;font-size:14px;">
@@ -332,7 +277,7 @@ exports.handler = async (event) => {
   // ── Save the order record first — this step must succeed ─────────────
   // If the order can't be saved, we return an error so Stripe tries again
   // automatically (it keeps retrying for up to 3 days). Nothing has been
-  // emailed or texted yet at this point, so a retry never sends doubles.
+  // emailed yet at this point, so a retry never sends doubles.
   // Airtable is the record when it's set up; if it isn't, the bakery
   // email is the record instead (see below).
   const retryLater = (why) => {
@@ -340,6 +285,11 @@ exports.handler = async (event) => {
     return { statusCode: 500, body: 'Temporary problem saving order; please retry.' };
   };
   const airtableConfigured = !!(AIRTABLE_API_KEY && AIRTABLE_BASE_ID);
+  // Set if Airtable refuses the order because of how it's set up (e.g. a
+  // column was renamed or deleted, or the access token changed). Retrying
+  // can never fix that, so instead the bakery email goes out as the
+  // record, with a warning to add the order to Airtable by hand.
+  let airtableProblem = '';
 
   if (AIRTABLE_API_KEY && AIRTABLE_BASE_ID) {
     try {
@@ -371,7 +321,6 @@ exports.handler = async (event) => {
                 'Phone': m.phone || '',
                 'Email': customerEmail || '',
                 'Cake Message': m.cake_message || '',
-                'Allergy Notes': m.allergy_notes || '',
                 'Amount Paid': Number(amount),
                 'Stripe Session ID': session.id || ''
               }
@@ -380,8 +329,18 @@ exports.handler = async (event) => {
         }
       );
       if (!airtableRes.ok) {
-        console.error('Airtable error:', await airtableRes.text());
-        return retryLater('Could not save order to Airtable');
+        const detail = await airtableRes.text().catch(() => '');
+        console.error('Airtable error:', airtableRes.status, detail);
+        // 401/403/404/422 = Airtable's setup (token, base, table name or
+        // columns) doesn't match — permanent until someone fixes it.
+        // Anything else (429 busy, 5xx down) is temporary: retry.
+        if ([401, 403, 404, 422].includes(airtableRes.status)) {
+          let reason = '';
+          try { reason = JSON.parse(detail)?.error?.message || JSON.parse(detail)?.error?.type || ''; } catch (e) {}
+          airtableProblem = reason || `Airtable error ${airtableRes.status}`;
+        } else {
+          return retryLater('Could not save order to Airtable');
+        }
       }
     } catch (err) {
       console.error('Failed to log order to Airtable:', err);
@@ -389,6 +348,33 @@ exports.handler = async (event) => {
     }
   }
 
+
+  const bakeryEmailHtml = `
+    <div style="font-family:sans-serif;font-size:15px;color:#2B3C25;line-height:1.6;">
+      ${airtableProblem ? `<div style="margin:0 0 16px;padding:12px 14px;background:#FCE8E3;border:1px solid #E7A89A;border-radius:6px;color:#7A2E1E;">
+        <strong>⚠️ This order was NOT saved to Airtable.</strong><br>
+        Please add it to Airtable by hand, and check Airtable's column names haven't been changed or deleted.<br>
+        <span style="font-size:12px;">Airtable said: ${escapeHtml(airtableProblem)}</span>
+      </div>` : ''}
+      <h2 style="margin:0 0 12px;">New cake order — ${safeSummary || 'Unknown cake'}</h2>
+      <p style="margin:0 0 16px;"><strong>Total paid:</strong> $${amount} ${currency}</p>
+      <table style="border-collapse:collapse;width:100%;max-width:480px;">
+        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Customer</td><td>${safeCustomerName}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Phone</td><td>${safePhone}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Email</td><td>${safeCustomerEmail}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Cake</td><td>${safeSummary}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Fulfilment</td><td>${safeFulfilment}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Date</td><td>${safeDate}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Time window</td><td>${safeTime}</td></tr>
+        ${m.fulfilment === 'delivery' ? `
+        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Suburb</td><td>${safeSuburb}</td></tr>
+        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Delivery address</td><td>${safeDeliveryAddress}</td></tr>
+        ` : ''}
+        ${m.cake_message ? `<tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Cake message</td><td>${safeCakeMessage}</td></tr>` : ''}
+      </table>
+      <p style="margin-top:20px;font-size:13px;color:#5F6350;">Full payment details are also in your Stripe Dashboard under Payments.</p>
+    </div>
+  `;
 
   try {
     const bakeryRes = await fetch('https://api.resend.com/emails', {
@@ -400,23 +386,21 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         from: 'The Old Flour Shop Orders <orders@theoldflourshop.co.nz>',
         to: [BAKERY_EMAIL],
-        // orders@theoldflourshop.co.nz is a verified sending address, not
-        // a real inbox — nothing arrives there if someone replies. This
-        // makes sure a reply lands somewhere actually checked, matching
-        // BAKERY_EMAIL (defaulting to theoldflourshop@gmail.com) so any
-        // reply-all or forward from the bakery's own inbox behaves sanely.
-        reply_to: BAKERY_EMAIL,
-        subject: `New order: ${m.order_summary || 'Cake'} — $${amount}`,
+        // Hitting Reply on this order email writes straight to the
+        // customer (e.g. to ask about their cake). Falls back to the
+        // bakery's own inbox only if the order somehow has no email.
+        reply_to: customerEmail || BAKERY_EMAIL,
+        subject: `${airtableProblem ? '⚠️ NOT IN AIRTABLE — ' : ''}New order: ${m.order_summary || 'Cake'} — $${amount}`,
         html: bakeryEmailHtml
       })
     });
     if (!bakeryRes.ok) {
       console.error('Resend error (bakery email):', await bakeryRes.text());
-      if (!airtableConfigured) return retryLater('Could not send bakery order email');
+      if (!airtableConfigured || airtableProblem) return retryLater('Could not send bakery order email');
     }
   } catch (err) {
     console.error('Failed to send bakery notification email:', err);
-    if (!airtableConfigured) return retryLater('Could not send bakery order email');
+    if (!airtableConfigured || airtableProblem) return retryLater('Could not send bakery order email');
   }
 
   // The order is now safely recorded, so this warm container can skip
@@ -454,30 +438,9 @@ exports.handler = async (event) => {
     console.error('No customer email found on session — skipped customer confirmation.');
   }
 
-  // ── Staff text alert (only if ClickSend is set up) ───────────────────
-  // Goes to the staff phone only, never to the customer. Plain text, not
-  // HTML, so the raw (unescaped) values are used here. No links, as
-  // ClickSend holds back texts containing URLs on new accounts.
-  if (CLICKSEND_USERNAME && CLICKSEND_API_KEY) {
-    const staffMobile = toNzMobile(BAKERY_SMS_NUMBER);
-    if (staffMobile) {
-      const when = [m.pickup_delivery_date, m.time_window].filter(Boolean).join(', ');
-      const fulfil = m.fulfilment === 'delivery' ? `Delivery (${m.suburb || '?'})` : 'Pickup';
-      await sendSms({
-        username: CLICKSEND_USERNAME,
-        apiKey: CLICKSEND_API_KEY,
-        from: CLICKSEND_FROM,
-        to: staffMobile,
-        body: `New order: ${m.order_summary || 'Cake'}. ${fulfil} ${when}. ${m.customer_name || ''} ${m.phone || ''}. $${amount} paid`
-      });
-    } else {
-      console.error('BAKERY_SMS_NUMBER is not a valid NZ mobile — skipped staff SMS.');
-    }
-  }
-
   // The order record (Airtable, or the bakery email if Airtable isn't set
   // up) is the one step that makes Stripe retry on failure. The customer
-  // email and staff text are best-effort: failures are logged, but
-  // don't trigger a retry, as that would re-send everything else too.
+  // email is best-effort: a failure is logged, but doesn't trigger a
+  // retry, as that would re-send everything else too.
   return { statusCode: 200, body: 'OK' };
 };

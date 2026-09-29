@@ -64,7 +64,8 @@ exports.handler = async (event) => {
     return respond(400, { error: 'Invalid request.' });
   }
 
-  const sessionId = body.sessionId;
+  // null or a non-object body would otherwise crash on the line below.
+  const sessionId = body && typeof body === 'object' ? body.sessionId : undefined;
   // Stripe Checkout session IDs always start with "cs_" — a cheap sanity
   // check before we even bother calling Stripe with it.
   if (typeof sessionId !== 'string' || sessionId.length > SESSION_ID_MAX_LENGTH || !SESSION_ID_PATTERN.test(sessionId)) {

@@ -4,11 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cakes Waiheke Island | The Old Flour Shop Bakery, Oneroa</title>
-<meta name="description" content="Order celebration cakes from The Old Flour Shop Bakery in Oneroa, Waiheke Island. Small batch cakes available for pickup or delivery across Waiheke.">
+<meta name="description" content="Order celebration cakes from The Old Flour Shop Bakery in Oneroa, Waiheke Island. Small batch cakes available for pickup, or delivery to selected areas across Waiheke.">
 <link rel="canonical" href="https://www.theoldflourshop.co.nz/">
+<!-- Browser tab, bookmark, Google search and home-screen icons (the round logo badge) -->
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" type="image/png" sizes="96x96" href="/images/favicon-96.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Cakes Waiheke Island | The Old Flour Shop Bakery, Oneroa">
-<meta property="og:description" content="Order celebration cakes from The Old Flour Shop Bakery in Oneroa, Waiheke Island. Small batch cakes available for pickup or delivery across Waiheke.">
+<meta property="og:description" content="Order celebration cakes from The Old Flour Shop Bakery in Oneroa, Waiheke Island. Small batch cakes available for pickup, or delivery to selected areas across Waiheke.">
 <meta property="og:url" content="https://www.theoldflourshop.co.nz/">
 <meta property="og:image" content="https://www.theoldflourshop.co.nz/images/og-cover.jpg">
 <meta property="og:image:width" content="1200">
@@ -245,6 +251,17 @@
   .qty-stepper button:hover{background:var(--line);}
   .qty-stepper span{min-width:16px;text-align:center;font-size:14px;}
   .cart-item-remove{background:none;border:none;color:var(--ink-soft);font-size:12px;cursor:pointer;text-decoration:underline;margin-left:6px;}
+  .cart-msgs{padding:0 0 12px 58px;border-bottom:1px solid var(--line);margin-top:-1px;}
+  .cart-msg{display:grid;grid-template-columns:1fr auto;align-items:center;column-gap:8px;margin-top:6px;}
+  .cart-msg label{grid-column:1 / -1;display:block;font-size:11.5px;letter-spacing:.04em;color:var(--ink-soft);margin:0 0 3px;padding:0;}
+  .cart-msg input[type=text]{width:100%;margin:0;padding:7px 10px;font-size:13.5px;height:auto;box-sizing:border-box;}
+  .cart-item:has(+ .cart-msgs){border-bottom:none;padding-bottom:4px;}
+  .cart-msg .msg-hint{grid-column:1 / -1;font-size:11.5px;color:#9A5B3C;margin-top:3px;}
+  .cart-msg .msg-hint:empty{display:none;}
+  .cart-msg .msg-count{font-size:11px;color:var(--ink-soft);min-width:34px;text-align:right;font-variant-numeric:tabular-nums;}
+  @media (max-width:600px){ .cart-msgs{padding-left:0;} }
+  .field-hint{font-size:12px;color:#9A5B3C;margin:-8px 0 10px;}
+  .field-hint:empty{display:none;}
   .cart-empty{color:var(--ink-soft);font-size:14px;padding:20px 0;text-align:center;}
 
   label.field{display:block;font-size:12.5px;font-weight:600;margin:0 0 6px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em;}
@@ -446,8 +463,9 @@
   "@type": "Bakery",
   "@id": "https://www.theoldflourshop.co.nz/#business",
   "name": "The Old Flour Shop Bakery",
-  "description": "A small-batch bakery in a restored old building in Oneroa, Waiheke Island, specialising in pre-order celebration cakes for pickup or delivery across the island.",
+  "description": "A small-batch bakery in a restored old building in Oneroa, Waiheke Island, specialising in pre-order celebration cakes for pickup, or delivery to selected areas across the island.",
   "image": "https://www.theoldflourshop.co.nz/images/og-cover.jpg",
+  "logo": "https://www.theoldflourshop.co.nz/images/logo.png",
   "url": "https://www.theoldflourshop.co.nz/",
   "telephone": "+64273399264",
   "email": "theoldflourshop@gmail.com",
@@ -546,7 +564,7 @@
         {
           "@type": "MenuItem",
           "name": "Key Lime Pie",
-          "description": "Key lime pie with a buttery biscuit crumb crust, smooth zesty lime filling. Bright, creamy and perfectly balanced between sweet and tangy.",
+          "description": "Key lime pie with a buttery biscuit crumb crust and a smooth, zesty lime filling. Bright, creamy and perfectly balanced between sweet and tangy.",
           "offers": { "@type": "Offer", "price": "130", "priceCurrency": "NZD" }
         }
       ]
@@ -582,7 +600,7 @@
       <p class="eyebrow">Oneroa, Waiheke Island</p>
       <h1>Celebration Cakes on Waiheke Island</h1>
       <p style="font-family:'Fraunces',serif;font-style:italic;font-size:19px;color:var(--sage-dark);margin:0 0 16px;">Something sweet for something special.</p>
-      <p class="lead">From birthday cakes to celebration centrepieces, order ahead from our small batch menu. Collect from our Oneroa bakery or have your cake delivered across Waiheke Island.</p>
+      <p class="lead">From birthday cakes to celebration centrepieces, order ahead from our small batch menu. Collect from our Oneroa bakery, or have your cake delivered to selected areas across Waiheke Island.</p>
       <div class="hero-ctas">
         <button class="btn btn-coral" id="heroCartBtn" onclick="openOrder()">Start an order</button>
         <a class="btn btn-ghost" href="#cakes">See the cake menu</a>
@@ -639,7 +657,7 @@
       <div class="cake-thumb"><img src="images/chocolate-marquise.webp" alt="Chocolate Marquise" width="1200" height="900" loading="lazy"></div>
       <div class="cake-body">
         <h3>Chocolate Marquise</h3>
-        <div class="cake-tags"><span class="tag">Bestseller</span><span class="tag">No Added Gluten</span></div>
+        <div class="cake-tags"><span class="tag">Bestseller</span><span class="tag">Made Without Added Gluten</span></div>
         <p class="desc" style="flex:none;">Rich chocolate marquise topped with soft caramel and a crown of torched meringue. Deeply chocolatey and indulgent.</p>
         <div class="cake-foot">
           <div class="price-from">$130.00</div>
@@ -679,7 +697,7 @@
       <div class="cake-thumb"><img src="images/orange-almond.webp" alt="Orange & Almond Cake" width="1200" height="900" loading="lazy"></div>
       <div class="cake-body">
         <h3>Orange & Almond Cake</h3>
-        <div class="cake-tags"><span class="tag">No Added Gluten</span><span class="tag">Contains Nuts</span></div>
+        <div class="cake-tags"><span class="tag">Made Without Added Gluten</span><span class="tag">Contains Nuts</span></div>
         <p class="desc" style="flex:none;">A beautifully moist orange and almond cake made with whole oranges and ground almonds for a bright, fresh citrus flavour.</p>
         <div class="cake-foot">
           <div class="price-from">$120.00</div>
@@ -748,7 +766,7 @@
       <div class="cake-body">
         <h3>Key Lime Pie</h3>
         <div class="cake-tags"><span class="tag">No Added Gluten Option</span></div>
-        <p class="desc" style="flex:none;">Key lime pie with a buttery biscuit crumb crust, smooth zesty lime filling. Bright, creamy and perfectly balanced between sweet and tangy.</p>
+        <p class="desc" style="flex:none;">Key lime pie with a buttery biscuit crumb crust and a smooth, zesty lime filling. Bright, creamy and perfectly balanced between sweet and tangy.</p>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin:8px 0 0;">
            <input type="checkbox" id="cardGf-key-lime-pie">
            Prepare without added gluten (+$7.50)
@@ -782,8 +800,8 @@
     <div class="steps">
       <div class="step"><div class="num">01</div><h3>Pick your cake</h3><p>Choose your favourite from our small-batch cake menu.</p></div>
       <div class="step"><div class="num">02</div><h3>Choose a date</h3><p>Select pickup or delivery and choose a date at least 48 hours ahead.</p></div>
-      <div class="step"><div class="num">03</div><h3>Pay online</h3><p>Secure your order with card payment at checkout. No surprises on the day.</p></div>
-      <div class="step"><div class="num">04</div><h3>We bake it fresh</h3><p>Your cake is made to order and ready for you at the time you chose.</p></div>
+      <div class="step"><div class="num">03</div><h3>Pay online</h3><p>Secure your order with card payment. A 1.8% credit card surcharge applies at checkout.</p></div>
+      <div class="step"><div class="num">04</div><h3>We bake it fresh</h3><p>Your cake is made to order and ready on your chosen date, for pickup or delivery.</p></div>
     </div>
   </div>
 </section>
@@ -874,6 +892,7 @@
         <h3>Your cart</h3>
         <p class="sub">Step 1 of 4 — cakes</p>
         <div id="cartList"></div>
+        <p id="messageAvailabilityNote" style="font-size:12px;color:var(--ink-soft);margin:10px 0 0;"></p>
         <div style="display:flex;gap:10px;align-items:flex-end;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);">
           <div style="flex:1;">
             <label class="field" for="selCakeToAdd">Add a cake</label>
@@ -893,17 +912,17 @@
         <p class="sub">Step 2 of 4 — when &amp; how</p>
         <div class="optgrid">
           <button type="button" class="optcard" id="optPickup" onclick="setFulfil('pickup')">
-            <b>Pickup</b><span>From our Oneroa store, free</span>
+            <b>Pickup</b><span>From our Oneroa bakery, free</span>
           </button>
           <button type="button" class="optcard" id="optDelivery" onclick="setFulfil('delivery')">
-            <b>Delivery</b><span>Across Waiheke, from $15</span>
+            <b>Delivery</b><span>Selected areas across Waiheke, from $15</span>
           </button>
         </div>
         <div id="addressWrap" style="display:none;">
           <label class="field" for="suburb">Suburb / area</label>
           <select id="suburb" onchange="updateDocket(); refreshNext(); saveDraft();"></select>
           <label class="field" for="address">Delivery address</label>
-          <input type="text" id="address" placeholder="123 Ocean View Rd, Oneroa" autocomplete="street-address">
+          <input type="text" id="address" placeholder="123 Ocean View Rd, Oneroa" autocomplete="street-address" maxlength="300">
         </div>
         <div class="cutoff-note" id="cutoffNote" style="display:none;"></div>
         <label class="field" for="orderDate">Date</label>
@@ -914,21 +933,15 @@
       <!-- STEP 3: details -->
       <div class="fstep" data-step="3">
         <h3>Your details</h3>
-        <p class="sub">Step 3 of 4 — contact &amp; message</p>
+        <p class="sub">Step 3 of 4 — your details</p>
         <div class="row2">
-          <div><label class="field" for="fname">First name</label><input type="text" id="fname" autocomplete="given-name"></div>
-          <div><label class="field" for="lname">Last name</label><input type="text" id="lname" autocomplete="family-name"></div>
+          <div><label class="field" for="fname">First name</label><input type="text" id="fname" autocomplete="given-name" maxlength="100"></div>
+          <div><label class="field" for="lname">Last name</label><input type="text" id="lname" autocomplete="family-name" maxlength="100"></div>
         </div>
         <div class="row2">
-          <div><label class="field" for="email">Email</label><input type="email" id="email" autocomplete="email"></div>
-          <div><label class="field" for="phone">Phone</label><input type="tel" id="phone" autocomplete="tel"></div>
+          <div><label class="field" for="email">Email</label><input type="email" id="email" autocomplete="email" maxlength="254" aria-describedby="emailHint"><p id="emailHint" class="field-hint" aria-live="polite"></p></div>
+          <div><label class="field" for="phone">Phone</label><input type="tel" id="phone" autocomplete="tel" maxlength="30"></div>
         </div>
-        <label class="field" for="message">Order message / cake messages (optional)</label>
-        <textarea id="message" rows="2" maxlength="160" placeholder="e.g. Happy Birthday Wanda!"></textarea>
-        <p style="font-size:12px;color:var(--ink-soft);margin:-8px 0 10px;">Ordering more than one cake? Put the cake name before each message, e.g. "Chocolate Cake: Happy 30th Sarah. Lemon Cake: Congratulations Mum."</p>
-        <p id="messageAvailabilityNote" style="font-size:12px;color:var(--ink-soft);margin:-8px 0 12px;"></p>
-        <label class="field" for="notes">Allergies / notes (optional)</label>
-        <textarea id="notes" rows="2" placeholder="Let us know about any allergies or special requests"></textarea>
       </div>
 
       <!-- STEP 4: payment -->
@@ -1025,7 +1038,7 @@ const CAKES = [
   {
     id:'chocolate-marquise',
     name:'Chocolate Marquise',
-    tags:['Bestseller','No Added Gluten'],
+    tags:['Bestseller','Made Without Added Gluten'],
     desc:'Rich chocolate marquise topped with soft caramel and a crown of torched meringue. Deeply chocolatey and indulgent.',
     price:130,
     photo:'chocolate-marquise'
@@ -1049,7 +1062,7 @@ const CAKES = [
   {
     id:'orange-almond',
     name:'Orange & Almond Cake',
-    tags:['No Added Gluten','Contains Nuts'],
+    tags:['Made Without Added Gluten','Contains Nuts'],
     desc:'A beautifully moist orange and almond cake made with whole oranges and ground almonds for a bright, fresh citrus flavour.',
     price:120,
     photo:'orange-almond'
@@ -1090,7 +1103,7 @@ const CAKES = [
     id:'key-lime-pie',
     name:'Key Lime Pie',
     tags:['No Added Gluten Option'],
-    desc:'Key lime pie with a buttery biscuit crumb crust, smooth zesty lime filling. Bright, creamy and perfectly balanced between sweet and tangy.',
+    desc:'Key lime pie with a buttery biscuit crumb crust and a smooth, zesty lime filling. Bright, creamy and perfectly balanced between sweet and tangy.',
     price:130,
     photo:'key-lime-pie'
   },
@@ -1173,9 +1186,38 @@ document.getElementById('footerBadge').src = document.getElementById('heroBadge'
 document.getElementById('visitImg').src = 'images/visitImg.webp';
 
 /* -------- order flow state -------- */
-let cart = []; // [{cakeId, qty}]
+let cart = []; // [{cakeId, qty, glutenFree, messages}] — messages: one per cake, only for cakes that take a piped message
 let state = { step:1, fulfil:null, date:null, time:null, paying:false,
-  fname:'',lname:'',email:'',phone:'',message:'',notes:'' };
+  fname:'',lname:'',email:'',phone:'' };
+
+// Piped cake messages. Only cakes tagged "Custom Message Available" can
+// take one, and each cake gets its own message (so 2x Chocolate
+// Celebration Cake can say two different things). The backend
+// (create-checkout-session.js) enforces the same cakes and limit itself.
+const CAKE_MESSAGE_MAX = 30;
+// Only characters that can actually be piped: letters (including
+// accented and macron letters, e.g. Māori names), numbers, spaces and
+// everyday punctuation — including the curly apostrophes and quotes
+// phone keyboards insert. Emoji and other symbols are removed. The
+// backend applies exactly the same rule.
+const CAKE_MESSAGE_DISALLOWED = /[^\p{L}\p{M}\p{N} .,!?'\u2018\u2019"\u201C\u201D&\-\u2013\u2014():;\/+#@*%]/gu;
+// Hidden pieces some emoji are built from (e.g. the invisible marker in ❤️
+// or keycap 1️⃣). They'd otherwise pass as 'accents' and be left behind.
+const CAKE_MESSAGE_EMOJI_PARTS = /[\uFE00-\uFE0F\u20E3\u200D\u{E0100}-\u{E01EF}]/gu;
+function cleanCakeMessage(str){
+  return String(str || '').replace(/\s/g, ' ').replace(CAKE_MESSAGE_EMOJI_PARTS, '').replace(CAKE_MESSAGE_DISALLOWED, '');
+}
+function allowsCakeMessage(cakeId){
+  const c = cakeById(cakeId);
+  return !!(c && c.tags && c.tags.includes('Custom Message Available'));
+}
+// Always returns exactly one (possibly empty) message per cake on the
+// line, trimmed to the limit — or [] for cakes that can't take one.
+function normalizeMessages(cakeId, messages, qty){
+  if(!allowsCakeMessage(cakeId)) return [];
+  const src = Array.isArray(messages) ? messages : [];
+  return Array.from({length: qty}, (_, i) => typeof src[i] === 'string' ? cleanCakeMessage(src[i]).slice(0, CAKE_MESSAGE_MAX) : '');
+}
 
 // All date/cutoff logic below is deliberately anchored to New Zealand
 // time (Pacific/Auckland), not the browser's or server's own clock —
@@ -1272,9 +1314,7 @@ function saveDraft(){
       fname: document.getElementById('fname') ? document.getElementById('fname').value : '',
       lname: document.getElementById('lname') ? document.getElementById('lname').value : '',
       email: document.getElementById('email') ? document.getElementById('email').value : '',
-      phone: document.getElementById('phone') ? document.getElementById('phone').value : '',
-      message: document.getElementById('message') ? document.getElementById('message').value : '',
-      notes: document.getElementById('notes') ? document.getElementById('notes').value : ''
+      phone: document.getElementById('phone') ? document.getElementById('phone').value : ''
     }));
   }catch(e){ /* private browsing etc — fine to skip */ }
 }
@@ -1297,13 +1337,13 @@ function clearDraft(){
 // validation: unknown cake id, non-finite/zero/negative quantity, or a
 // glutenFree request for a cake that doesn't offer it are all rejected
 // the same way in both places. Returns null if the item isn't valid.
-function resolveCartItem(cakeId, qty, glutenFree){
+function resolveCartItem(cakeId, qty, glutenFree, messages){
   if(!cakeById(cakeId)) return null;
   qty = Math.floor(Number(qty));
   if(!Number.isFinite(qty) || qty < 1) return null;
   qty = Math.min(qty, MAX_ITEM_QTY_CLIENT);
   glutenFree = !!glutenFree && offersGlutenFreeOption(cakeId);
-  return { cakeId, qty, glutenFree };
+  return { cakeId, qty, glutenFree, messages: normalizeMessages(cakeId, messages, qty) };
 }
 
 function sanitizeCartArray(rawCart){
@@ -1311,10 +1351,14 @@ function sanitizeCartArray(rawCart){
   const merged = new Map(); // key: cakeId|glutenFree -> item, so any duplicate/tampered entries re-merge safely
   rawCart.forEach(raw => {
     if(!raw || typeof raw.cakeId !== 'string') return;
-    const resolved = resolveCartItem(raw.cakeId, raw.qty, raw.glutenFree);
+    const resolved = resolveCartItem(raw.cakeId, raw.qty, raw.glutenFree, raw.messages);
     if(!resolved) return;
     const key = resolved.cakeId + '|' + resolved.glutenFree;
-    if(merged.has(key)){ merged.get(key).qty = Math.min(merged.get(key).qty + resolved.qty, MAX_ITEM_QTY_CLIENT); }
+    if(merged.has(key)){
+      const m = merged.get(key);
+      m.qty = Math.min(m.qty + resolved.qty, MAX_ITEM_QTY_CLIENT);
+      m.messages = normalizeMessages(m.cakeId, m.messages.concat(resolved.messages), m.qty);
+    }
     else{ merged.set(key, resolved); }
   });
   return Array.from(merged.values());
@@ -1350,9 +1394,7 @@ function loadDraftIfAny(){
     fname: typeof data.fname === 'string' ? data.fname.slice(0, 100) : '',
     lname: typeof data.lname === 'string' ? data.lname.slice(0, 100) : '',
     email: typeof data.email === 'string' ? data.email.slice(0, 200) : '',
-    phone: typeof data.phone === 'string' ? data.phone.slice(0, 50) : '',
-    message: typeof data.message === 'string' ? data.message.slice(0, 160) : '',
-    notes: typeof data.notes === 'string' ? data.notes.slice(0, 500) : ''
+    phone: typeof data.phone === 'string' ? data.phone.slice(0, 50) : ''
   };
 }
 
@@ -1376,7 +1418,10 @@ function addToCart(cakeId, qty, glutenFree){
   if(!resolved) return;
 
   const existing = cart.find(i => i.cakeId === resolved.cakeId && i.glutenFree === resolved.glutenFree);
-  if(existing){ existing.qty = Math.min(existing.qty + resolved.qty, MAX_ITEM_QTY_CLIENT); }
+  if(existing){
+    existing.qty = Math.min(existing.qty + resolved.qty, MAX_ITEM_QTY_CLIENT);
+    existing.messages = normalizeMessages(existing.cakeId, existing.messages.concat(resolved.messages), existing.qty);
+  }
   else{ cart.push(resolved); }
   updateCartBadge();
   saveDraft();
@@ -1399,6 +1444,7 @@ function setCartLineQty(index, qty){
   qty = Math.floor(Number(qty));
   if(!Number.isFinite(qty) || qty <= 0){ removeCartLine(index); return; }
   item.qty = Math.min(qty, MAX_ITEM_QTY_CLIENT);
+  item.messages = normalizeMessages(item.cakeId, item.messages, item.qty); // one box per cake
   renderCartStep();
   updateDocket();
   refreshNext();
@@ -1490,26 +1536,73 @@ function renderCartStep(){
           </div>
           <button type="button" class="cart-item-remove" onclick="removeCartLine(${index})">Remove</button>
         </div>
-      </div>`;
+      </div>${cakeMessageBoxes(item, index)}`;
   }).join('');
+  // Values are set here through the DOM rather than written into the
+  // HTML above, so nothing a customer types can ever break the markup.
+  list.querySelectorAll('.cart-msg input').forEach(el => {
+    const item = cart[Number(el.dataset.line)];
+    el.value = (item && item.messages[Number(el.dataset.slot)]) || '';
+    updateMessageCount(el);
+  });
   renderMessageAvailabilityNote();
 }
 
+// One optional message box per cake, only for cakes that can take one.
+function cakeMessageBoxes(item, index){
+  if(!allowsCakeMessage(item.cakeId)) return '';
+  const boxes = item.messages.map((_, slot) => {
+    const id = `cakeMsg-${index}-${slot}`;
+    const label = item.qty > 1 ? `Message for cake ${slot + 1}` : 'Cake message';
+    return `<div class="cart-msg">
+        <label for="${id}">${label}</label>
+        <input type="text" id="${id}" maxlength="${CAKE_MESSAGE_MAX}" placeholder="Optional, e.g. Happy 30th Sarah" data-line="${index}" data-slot="${slot}" oninput="onCakeMessageInput(this)" autocomplete="off">
+        <span class="msg-count" aria-live="polite"></span>
+        <span class="msg-hint" aria-live="polite"></span>
+      </div>`;
+  }).join('');
+  return `<div class="cart-msgs">${boxes}</div>`;
+}
+function updateMessageCount(el){
+  const counter = el.parentElement.querySelector('.msg-count');
+  if(counter) counter.textContent = `${el.value.length}/${CAKE_MESSAGE_MAX}`;
+}
+function onCakeMessageInput(el){
+  const item = cart[Number(el.dataset.line)];
+  if(!item) return;
+  // Strip emoji/symbols as they're typed or pasted, keeping the cursor
+  // where the customer expects it, and say briefly why they vanished.
+  // (Only when something was removed are doubled-up spaces tidied, e.g.
+  // "Tāne ❤️ xx" → "Tāne xx", so normal typing is never interfered with.)
+  const tidy = str => cleanCakeMessage(str).replace(/ {2,}/g, ' ');
+  const hint = el.parentElement.querySelector('.msg-hint');
+  if(cleanCakeMessage(el.value) !== el.value){
+    const caret = el.selectionStart == null ? el.value.length : el.selectionStart;
+    const pos = tidy(el.value.slice(0, caret)).length;
+    el.value = tidy(el.value);
+    try{ el.setSelectionRange(pos, pos); }catch(e){}
+    if(hint){
+      hint.textContent = 'Emoji and symbols can\'t be piped, so they\'ve been removed.';
+      clearTimeout(hint._timer);
+      hint._timer = setTimeout(() => { hint.textContent = ''; }, 5000);
+    }
+  }
+  item.messages[Number(el.dataset.slot)] = el.value.slice(0, CAKE_MESSAGE_MAX);
+  updateMessageCount(el);
+  updateDocket();
+  scheduleDraftSave();
+}
+
+// Only shown when the cart has a cake that can't take a message, so
+// customers know why there's no message box for it.
 function renderMessageAvailabilityNote(){
   const note = document.getElementById('messageAvailabilityNote');
   if(!note) return;
-  const qualifying = cart
-    .map(i => cakeById(i.cakeId))
-    .filter(c => c && c.tags && c.tags.includes('Custom Message Available'))
-    .map(c => c.name);
-  if(cart.length === 0){
-    note.textContent = '';
-  } else if(qualifying.length === 0){
-    note.textContent = 'None of the cakes currently in your cart offer piped messages — mention any request in the notes below and we\'ll see what we can do.';
-  } else {
-    const unique = [...new Set(qualifying)];
-    note.textContent = `Piped messages are available on: ${unique.join(', ')}.`;
-  }
+  const hasNoMessageCake = cart.some(i => !allowsCakeMessage(i.cakeId));
+  if(!hasNoMessageCake){ note.textContent = ''; return; }
+  const names = CAKES.filter(c => allowsCakeMessage(c.id)).map(c => c.name);
+  const list = names.length > 1 ? names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] : names.join('');
+  note.textContent = `Piped messages are only available on the ${list}.`;
 }
 
 
@@ -1530,7 +1623,7 @@ function openOrder(cakeId, glutenFree){
   const draft = loadDraftIfAny();
 
   state = { step:1, fulfil:null, date:null, time:null, paying:false,
-    fname:'',lname:'',email:'',phone:'',message:'',notes:'', address:'' };
+    fname:'',lname:'',email:'',phone:'', address:'' };
   if(draft){
     cart = draft.cart;
     state.fulfil = draft.fulfil;
@@ -1538,7 +1631,6 @@ function openOrder(cakeId, glutenFree){
     state.time = timeWindowFor(draft.fulfil); // derived, never restored directly — see timeWindowFor() comment
     state.fname = draft.fname; state.lname = draft.lname;
     state.email = draft.email; state.phone = draft.phone;
-    state.message = draft.message; state.notes = draft.notes;
     state.address = draft.address;
   }
   if(cakeId){ addToCart(cakeId, 1, glutenFree); }
@@ -1557,7 +1649,7 @@ function openOrder(cakeId, glutenFree){
   // '') rather than left alone — otherwise a previous order's details
   // could still be sitting visibly in the form when there's no draft to
   // legitimately restore them from.
-  ['fname','lname','email','phone','message','notes','address'].forEach(id=>{
+  ['fname','lname','email','phone','address'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.value = state[id] || '';
   });
@@ -1656,7 +1748,7 @@ function timeWindowFor(fulfil){
   return null;
 }
 function timeNoteMessageFor(fulfil){
-  if(fulfil === 'pickup') return 'Pickup is available anytime from 7:30am to 3pm daily from the store.';
+  if(fulfil === 'pickup') return 'Pickup is available anytime from 7:30am to 3pm daily from the bakery.';
   if(fulfil === 'delivery') return 'Delivery time to be confirmed — we\'ll be in touch to arrange a suitable time.';
   return '';
 }
@@ -1752,6 +1844,26 @@ function goToStep(n){
   refreshNext();
 }
 
+// Same rule the payment server uses (isValidEmail in
+// create-checkout-session.js), so an address like "sarah@gmail" (missing
+// ".com") is caught here, not rejected after the customer clicks Pay.
+// The browser's own email check is looser, so it isn't relied on.
+function isValidEmail(value){
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((value || '').trim());
+}
+// Shown once they've left the email box (not while still typing), and
+// cleared as soon as the address looks right.
+function updateEmailHint(showIfInvalid){
+  const el = document.getElementById('email');
+  const hint = document.getElementById('emailHint');
+  if(!el || !hint) return;
+  const v = el.value.trim();
+  if(!v || isValidEmail(v)){ hint.textContent = ''; return; }
+  if(showIfInvalid) hint.textContent = 'Please check your email address, it looks incomplete (e.g. name@gmail.com).';
+}
+document.addEventListener('focusout', e => { if(e.target && e.target.id === 'email') updateEmailHint(true); });
+document.addEventListener('input', e => { if(e.target && e.target.id === 'email') updateEmailHint(false); });
+
 function isReasonablePhone(value){
   const digits = (value || '').replace(/[^0-9]/g, '');
   return digits.length >= 7 && digits.length <= 15; // loose but catches "123" or empty-ish input
@@ -1775,7 +1887,7 @@ function refreshNext(){
     const emailField = document.getElementById('email');
     ok = document.getElementById('fname').value.trim() &&
          document.getElementById('lname').value.trim() &&
-         emailField.value.trim() && emailField.checkValidity() &&
+         isValidEmail(emailField.value) &&
          isReasonablePhone(document.getElementById('phone').value);
   }
   if(n===4){
@@ -1797,7 +1909,7 @@ function scheduleDraftSave(){
   draftSaveTimer = setTimeout(saveDraft, 500);
 }
 const VALIDITY_FIELDS = ['fname','lname','email','phone','address'];
-const DRAFT_TEXT_FIELDS = ['fname','lname','email','phone','address','message','notes'];
+const DRAFT_TEXT_FIELDS = ['fname','lname','email','phone','address'];
 DRAFT_TEXT_FIELDS.forEach(id=>{
   document.addEventListener('input', e => {
     if(e.target.id !== id) return;
@@ -1819,8 +1931,6 @@ function nextStep(){
     state.lname = document.getElementById('lname').value;
     state.email = document.getElementById('email').value;
     state.phone = document.getElementById('phone').value;
-    state.message = document.getElementById('message').value;
-    state.notes = document.getElementById('notes').value;
     updateDocket();
     saveDraft();
   }
@@ -1850,6 +1960,18 @@ async function parseJsonSafely(res){
   }
 }
 
+// If a customer taps Back on Stripe's payment page, some browsers (Safari
+// on iPhone especially) don't reload this page — they restore it exactly
+// as it was left, including a Pay button still locked on "Redirecting to
+// payment…". This unlocks it again so they can carry on.
+window.addEventListener('pageshow', e => {
+  if(!e.persisted || !state.paying) return;
+  state.paying = false;
+  const btn = document.getElementById('nextBtn');
+  if(btn) btn.textContent = state.step === 4 ? 'Continue to payment' : 'Continue';
+  refreshNext();
+});
+
 async function startCheckout(){
   const errEl = document.getElementById('payError');
   errEl.style.display = 'none';
@@ -1863,7 +1985,7 @@ async function startCheckout(){
   // the server looks up the real prices and delivery fee itself and
   // ignores any price/name the browser might send. See create-checkout-session.js.
   const payload = {
-    items: cart.map(i => ({ cakeId: i.cakeId, quantity: i.qty, glutenFree: !!i.glutenFree })),
+    items: cart.map(i => ({ cakeId: i.cakeId, quantity: i.qty, glutenFree: !!i.glutenFree, messages: i.messages || [] })),
     fulfil: state.fulfil,
     suburb: state.fulfil==='delivery' ? (document.getElementById('suburb').value || '') : '',
     address: state.fulfil==='delivery' ? (state.address || '') : '',
@@ -1873,9 +1995,7 @@ async function startCheckout(){
     fname: state.fname,
     lname: state.lname,
     email: state.email,
-    phone: state.phone,
-    message: state.message,
-    notes: state.notes
+    phone: state.phone
   };
 
   try{
@@ -1953,7 +2073,7 @@ async function showConfirmationFromStripe(sessionId){
       setConfirmStamp('confirmed');
       document.getElementById('confirmHeading').textContent = 'Order confirmed!';
       document.getElementById('confirmSub').innerHTML =
-        `Your order for <b>${escapeHtml(data.orderSummary)}</b> is confirmed — $${escapeHtml(data.amount)} ${escapeHtml(data.currency)} paid. We'll be in touch to confirm the details.<br><span style="font-size:12px;color:var(--ink-soft);">Reference: ${escapeHtml(sessionId.slice(-8))}</span>`;
+        `Your order for <b>${escapeHtml(data.orderSummary)}</b> is confirmed — $${escapeHtml(data.amount)} ${escapeHtml(data.currency)} paid. A confirmation email is on its way to you.<br><span style="font-size:12px;color:var(--ink-soft);">Reference: ${escapeHtml(sessionId.slice(-8))}</span>`;
       cart = [];
       updateCartBadge();
       clearDraft();
@@ -2037,6 +2157,12 @@ function updateDocket(){
       const each = item.qty > 1 ? ` (${item.qty} × ${fmt(GF_SURCHARGE)})` : '';
       row += `<div class="dk-row dk-sub"><span class="dk-label">+ No added gluten${each}</span><span>${fmt(GF_SURCHARGE * item.qty)}</span></div>`;
     }
+    // Piped messages, one row per cake that has one (escaped — customer text).
+    (item.messages || []).forEach((msg, slot) => {
+      if(!msg || !msg.trim()) return;
+      const which = item.qty > 1 ? ` ${slot + 1}` : '';
+      row += `<div class="dk-row dk-sub"><span class="dk-label">Message${which}: "${escapeHtml(msg.trim())}"</span><span></span></div>`;
+    });
     return row;
   }).join('');
   if(state.fulfil){
@@ -2065,8 +2191,6 @@ function updateDocket(){
     rows += `<div class="dk-line"></div><div class="dk-row"><span class="dk-label">NAME</span><span>${escapeHtml(state.fname)} ${escapeHtml(state.lname)}</span></div>`;
     if(state.email) rows += `<div class="dk-row"><span class="dk-label">EMAIL</span><span>${escapeHtml(state.email)}</span></div>`;
     if(state.phone) rows += `<div class="dk-row"><span class="dk-label">PHONE</span><span>${escapeHtml(state.phone)}</span></div>`;
-    if(state.message) rows += `<div class="dk-row"><span class="dk-label">MSG</span><span>"${escapeHtml(state.message)}"</span></div>`;
-    if(state.notes) rows += `<div class="dk-row"><span class="dk-label">NOTES</span><span>${escapeHtml(state.notes)}</span></div>`;
   }
   // A null delivery fee (no valid suburb chosen yet) contributes 0 to this
   // running total display — the customer can't reach payment in that state
