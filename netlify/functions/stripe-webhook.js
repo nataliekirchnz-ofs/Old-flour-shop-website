@@ -7,10 +7,12 @@
 //
 // It verifies the request really came from Stripe (using a signing
 // secret), then:
-//   1. sends an order notification email to the bakery
-//   2. sends a branded order confirmation email to the customer
-//   3. logs the order as a row in Airtable, so staff can see upcoming
+//   1. logs the order as a row in Airtable, so staff can see upcoming
 //      orders in one place without digging through Stripe or email
+//   2. sends an order notification email to the bakery
+//   3. sends a branded order confirmation email to the customer
+//   4. (optional) texts a short new-order alert to the staff phone via
+//      TNZ. Staff only — customers are never texted.
 //
 // Setup required (see README.md for the full walkthrough):
 //   1. Create a free account at https://resend.com, get an API key,
@@ -28,6 +30,12 @@
 //      below, get an API token, add AIRTABLE_API_KEY, AIRTABLE_BASE_ID
 //      and AIRTABLE_TABLE_NAME in Netlify — see README.md for the
 //      exact steps and field names to create
+//   5. (optional) For staff text alerts, add TNZ_AUTH_TOKEN in Netlify
+//      (from the TNZ Dashboard: Users -> your user -> API tab -> Auth
+//      Token). Texts go to +64273399264, or STAFF_SMS_NUMBER if set.
+//      Add TNZ_TEST_MODE = true to check the connection without sending
+//      real texts (TNZ reports success but sends nothing); remove it to
+//      go live.
 
 const crypto = require('crypto');
 
@@ -72,6 +80,67 @@ async function isDuplicateInAirtable(sessionId, apiKey, baseId, tableName) {
     return Array.isArray(data.records) && data.records.length > 0;
   } catch (e) {
     return false;
+  }
+}
+
+// ── Staff text alert (TNZ) ──────────────────────────────────────────────
+// Texts the staff phone when a new order comes in. Staff only — customers
+// are never texted. Uses TNZ's REST API v3.00 ("Send SMS",
+// https://api.tnz.co.nz/api/v3.00/sms). Switched off unless
+// TNZ_AUTH_TOKEN is set in Netlify.
+
+// Characters like en dashes (–), curly quotes, macrons and emoji aren't in
+// the standard SMS alphabet; one of them switches the whole text to an
+// encoding that fits 70 characters per part instead of 160, so the text
+// costs more. They're swapped for plain equivalents first (TNZ's own
+// CharacterConversion option is also switched on as a backstop).
+function toPlainSms(str) {
+  return String(str || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // ā → a, é → e
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/\u2026/g, '...')
+    .replace(/[^\x20-\x7E\n]/g, '')
+    .replace(/ {2,}/g, ' ')
+    .trim();
+}
+
+// Sends one text. Never throws, and each attempt gives up after 4 seconds,
+// so a problem at TNZ can never hold up or break order processing.
+// TNZ's docs mention both "Bearer" and "Basic" for the Authorization
+// header, so "Bearer" is tried first and "Basic" only if that's refused.
+async function sendStaffSms({ token, to, body, reference, testMode }) {
+  const payload = JSON.stringify({
+    ToNumber: to,
+    Message: toPlainSms(body),
+    Reference: reference,            // shows in the TNZ Dashboard
+    CharacterConversion: true,
+    ...(testMode ? { Mode: 'Test' } : {})   // Test = TNZ reports success, sends nothing
+  });
+  for (const scheme of ['Bearer', 'Basic']) {
+    try {
+      const res = await fetch('https://api.tnz.co.nz/api/v3.00/sms', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `${scheme} ${token}`
+        },
+        body: payload,
+        signal: AbortSignal.timeout(4000)
+      });
+      if (res.ok) return;
+      const detail = await res.text().catch(() => '');
+      if (res.status === 401 && scheme === 'Bearer') continue;   // try "Basic"
+      // 401 on both = the TNZ_AUTH_TOKEN in Netlify is wrong, or was
+      // refreshed in the TNZ Dashboard (which cancels the old one).
+      console.error('TNZ SMS error:', res.status, detail);
+      return;
+    } catch (err) {
+      console.error('Failed to send staff SMS via TNZ:', err.name === 'TimeoutError' ? 'no response within 4 seconds' : err);
+      return;
+    }
   }
 }
 
@@ -128,6 +197,8 @@ exports.handler = async (event) => {
   // Emails need an absolute image URL (unlike the website, which can use
   // relative paths) — this must be your real live domain.
   const SITE_URL = process.env.SITE_URL || 'https://www.theoldflourshop.co.nz';
+  const TNZ_AUTH_TOKEN = process.env.TNZ_AUTH_TOKEN || '';
+  const STAFF_SMS_NUMBER = process.env.STAFF_SMS_NUMBER || '+64273399264'; // staff phone
 
   if (!STRIPE_WEBHOOK_SECRET || !RESEND_API_KEY) {
     console.error('Missing STRIPE_WEBHOOK_SECRET or RESEND_API_KEY environment variable.');
@@ -205,39 +276,70 @@ exports.handler = async (event) => {
   const safeCakeMessage = escapeHtml(m.cake_message);
   const customerFirstName = escapeHtml((m.customer_name || '').split(' ')[0] || 'there');
 
-  // How the total is made up (cakes, no-added-gluten extras, delivery,
-  // card surcharge), from the figures the checkout function stored.
-  // Only shown if they add up exactly to what Stripe actually charged —
-  // otherwise (e.g. an order placed before this was added) the email
-  // just shows the total, as before.
+  // ── Itemised receipt (used in both emails) ──────────────────────────
+  // One line per cake with its price, cake messages underneath, a
+  // no-added-gluten row where chosen, then delivery, card surcharge and
+  // total. Built from the lines the checkout function stored (receipt_0,
+  // receipt_1, ...), and only used if they add up exactly to what Stripe
+  // actually charged — otherwise (e.g. an order placed before this was
+  // added) the emails fall back to the simpler layout.
+  const money = c => `$${(c / 100).toFixed(2)}`;
   const cents = key => {
     const n = Number(m[key]);
     return Number.isInteger(n) && n >= 0 ? n : null;
   };
-  const money = c => `$${(c / 100).toFixed(2)}`;
-  const parts = {
-    cakes: cents('price_cakes_cents'),
-    gf: cents('price_gf_cents'),
-    delivery: cents('price_delivery_cents'),
-    surcharge: cents('price_surcharge_cents')
-  };
-  const haveBreakdown = Object.values(parts).every(v => v !== null)
-    && parts.cakes + parts.gf + parts.delivery + parts.surcharge === (session.amount_total || 0);
-  const row = (label, value, strong) => `<tr><td style="padding:3px 12px 3px 0;color:#5F6350;">${label}</td><td style="text-align:right;white-space:nowrap;">${strong ? `<strong>${value}</strong>` : value}</td></tr>`;
-  const priceBreakdownHtml = haveBreakdown
-    ? [
-        row('Cakes', money(parts.cakes)),
-        parts.gf ? row('No added gluten', money(parts.gf)) : '',
-        parts.delivery ? row(`Delivery${m.suburb ? ` (${safeSuburb})` : ''}`, money(parts.delivery)) : '',
-        parts.surcharge ? row('Credit Card Surcharge', money(parts.surcharge)) : '',
-        row('Total paid', `$${amount} ${currency}`, true)
-      ].join('')
-    : row('Total paid', `$${amount} ${currency}`);
+  let receiptLines = null;
+  try {
+    let raw = '';
+    for (let k = 0; m[`receipt_${k}`] !== undefined; k++) raw += m[`receipt_${k}`];
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (Array.isArray(parsed) && parsed.length && parsed.every(l =>
+      Array.isArray(l) && typeof l[0] === 'string' && Number.isInteger(l[1]) && l[1] > 0 &&
+      Number.isInteger(l[2]) && l[2] >= 0 && Number.isInteger(l[3]) && l[3] >= 0 && Array.isArray(l[4]))) {
+      receiptLines = parsed;
+    }
+  } catch (e) { receiptLines = null; }
+  const deliveryCents = cents('price_delivery_cents');
+  const surchargeCents = cents('price_surcharge_cents');
+  const receiptOk = !!receiptLines && deliveryCents !== null && surchargeCents !== null
+    && receiptLines.reduce((sum, [, qty, each, gf]) => sum + (each + gf) * qty, 0) + deliveryCents + surchargeCents === (session.amount_total || 0);
 
+  const G = '#5F6350';
+  const receiptHtml = (() => {
+    if (!receiptOk) return '';
+    const td = 'padding:5px 0;vertical-align:top;';
+    const sub = `padding:0 0 5px 16px;font-size:13px;color:${G};`;
+    const rows = [];
+    for (const [name, qty, each, gf, msgs] of receiptLines) {
+      rows.push(`<tr><td style="${td}"><strong>${qty} × ${escapeHtml(name)}</strong>${qty > 1 ? `<br><span style="font-size:12.5px;color:${G};">${money(each)} each</span>` : ''}</td><td style="${td}text-align:right;white-space:nowrap;">${money(each * qty)}</td></tr>`);
+      msgs.forEach((msg, n) => {
+        if (typeof msg === 'string' && msg.trim()) {
+          rows.push(`<tr><td style="${sub}">${qty > 1 ? `Cake ${n + 1} message` : 'Cake message'}: "${escapeHtml(msg.trim())}"</td><td style="${sub}"></td></tr>`);
+        }
+      });
+      if (gf) rows.push(`<tr><td style="${sub}">+ No added gluten${qty > 1 ? ` (${qty} × ${money(gf)})` : ''}</td><td style="${sub}text-align:right;white-space:nowrap;">${money(gf * qty)}</td></tr>`);
+    }
+    rows.push(`<tr><td colspan="2" style="border-top:1px dashed #E3E1D6;padding:0;height:6px;"></td></tr>`);
+    if (deliveryCents) rows.push(`<tr><td style="padding:3px 0;color:${G};">Delivery${m.suburb ? ` (${safeSuburb})` : ''}</td><td style="padding:3px 0;text-align:right;white-space:nowrap;">${money(deliveryCents)}</td></tr>`);
+    if (surchargeCents) rows.push(`<tr><td style="padding:3px 0;color:${G};">Credit Card Surcharge (1.8%)</td><td style="padding:3px 0;text-align:right;white-space:nowrap;">${money(surchargeCents)}</td></tr>`);
+    rows.push(`<tr><td style="border-top:1px solid #2B3C25;padding:8px 0 0;font-size:16px;"><strong>Total paid</strong></td><td style="border-top:1px solid #2B3C25;padding:8px 0 0;text-align:right;font-size:16px;white-space:nowrap;"><strong>$${amount} ${currency}</strong></td></tr>`);
+    return `<table style="border-collapse:collapse;width:100%;max-width:460px;margin:0 0 20px;font-size:14.5px;">${rows.join('')}</table>`;
+  })();
+  const sectionLabel = text => `<p style="margin:0 0 6px;font-size:12px;letter-spacing:.06em;color:${G};">${text}</p>`;
 
+  // Fallback (no itemised lines available): the order summary, any cake
+  // messages, and the total paid.
+  const simpleSummaryHtml = `
+      <table style="border-collapse:collapse;width:100%;margin-bottom:16px;">
+        <tr><td style="padding:6px 12px 6px 0;color:${G};">Cake</td><td><strong>${safeSummary}</strong></td></tr>
+        ${m.cake_message ? `<tr><td style="padding:6px 12px 6px 0;color:${G};">Cake message</td><td>${safeCakeMessage}</td></tr>` : ''}
+        <tr><td style="padding:6px 12px 6px 0;color:${G};">Total paid</td><td><strong>$${amount} ${currency}</strong></td></tr>
+      </table>`;
+
+  const cakeWord = parseInt(m.item_count, 10) > 1 ? 'cakes' : 'cake';
   const fulfilLine = m.fulfilment === 'delivery'
-    ? `We'll deliver your cake to <strong>${safeDeliveryAddress || 'your address'}</strong> (${safeSuburb || 'Waiheke Island'}) on <strong>${safeDate}</strong>. We'll be in touch to confirm a delivery time.`
-    : `Your cake will be ready for pickup from our Oneroa bakery on <strong>${safeDate}</strong>. ${safeTime ? safeTime + '.' : ''}`;
+    ? `We'll deliver your ${cakeWord} to <strong>${safeDeliveryAddress || 'your address'}</strong> (${safeSuburb || 'Waiheke Island'}) on <strong>${safeDate}</strong>. We'll be in touch to confirm a delivery time.`
+    : `Your ${cakeWord} will be ready for pickup from our Oneroa bakery on <strong>${safeDate}</strong>. ${safeTime ? safeTime + '.' : ''}`;
 
   const customerEmailHtml = `
     <div style="font-family:sans-serif;font-size:15px;color:#2B3C25;line-height:1.6;max-width:520px;">
@@ -245,16 +347,9 @@ exports.handler = async (event) => {
         <img src="${SITE_URL}/images/badge-email.png" width="80" height="80" alt="The Old Flour Shop Bakery" style="display:inline-block;">
       </div>
       <h2 style="margin:0 0 4px;font-family:Georgia,serif;">Thanks, ${customerFirstName}!</h2>
-      <p style="margin:0 0 20px;color:#5F6350;">Your order is confirmed — here's a copy for your records.</p>
+      <p style="margin:0 0 18px;color:#5F6350;">Your order is confirmed — here's a copy for your records.</p>
 
-      <table style="border-collapse:collapse;width:100%;margin-bottom:16px;">
-        <tr><td style="padding:6px 12px 6px 0;color:#5F6350;">Cake</td><td><strong>${safeSummary}</strong></td></tr>
-        ${m.cake_message ? `<tr><td style="padding:6px 12px 6px 0;color:#5F6350;">Cake message</td><td>${safeCakeMessage}</td></tr>` : ''}
-      </table>
-
-      <table style="border-collapse:collapse;width:100%;max-width:340px;margin:0 0 20px;border-top:1px solid #E3E1D6;padding-top:6px;">
-        ${priceBreakdownHtml}
-      </table>
+      ${receiptOk ? sectionLabel('YOUR ORDER') + receiptHtml : simpleSummaryHtml}
 
       <p style="margin:0 0 20px;">${fulfilLine}</p>
 
@@ -356,13 +451,15 @@ exports.handler = async (event) => {
         Please add it to Airtable by hand, and check Airtable's column names haven't been changed or deleted.<br>
         <span style="font-size:12px;">Airtable said: ${escapeHtml(airtableProblem)}</span>
       </div>` : ''}
-      <h2 style="margin:0 0 12px;">New cake order — ${safeSummary || 'Unknown cake'}</h2>
-      <p style="margin:0 0 16px;"><strong>Total paid:</strong> $${amount} ${currency}</p>
+      ${receiptOk
+        ? `<h2 style="margin:0 0 14px;">New cake order — $${amount}</h2>${sectionLabel('ORDER')}${receiptHtml}${sectionLabel('DETAILS')}`
+        : `<h2 style="margin:0 0 12px;">New cake order — ${safeSummary || 'Unknown cake'}</h2>
+      <p style="margin:0 0 16px;"><strong>Total paid:</strong> $${amount} ${currency}</p>`}
       <table style="border-collapse:collapse;width:100%;max-width:480px;">
         <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Customer</td><td>${safeCustomerName}</td></tr>
         <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Phone</td><td>${safePhone}</td></tr>
         <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Email</td><td>${safeCustomerEmail}</td></tr>
-        <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Cake</td><td>${safeSummary}</td></tr>
+        ${receiptOk ? '' : `<tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Cake</td><td>${safeSummary}</td></tr>`}
         <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Fulfilment</td><td>${safeFulfilment}</td></tr>
         <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Date</td><td>${safeDate}</td></tr>
         <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Time window</td><td>${safeTime}</td></tr>
@@ -370,7 +467,7 @@ exports.handler = async (event) => {
         <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Suburb</td><td>${safeSuburb}</td></tr>
         <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Delivery address</td><td>${safeDeliveryAddress}</td></tr>
         ` : ''}
-        ${m.cake_message ? `<tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Cake message</td><td>${safeCakeMessage}</td></tr>` : ''}
+        ${!receiptOk && m.cake_message ? `<tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Cake message</td><td>${safeCakeMessage}</td></tr>` : ''}
       </table>
       <p style="margin-top:20px;font-size:13px;color:#5F6350;">Full payment details are also in your Stripe Dashboard under Payments.</p>
     </div>
@@ -438,9 +535,23 @@ exports.handler = async (event) => {
     console.error('No customer email found on session — skipped customer confirmation.');
   }
 
+  // ── Staff text alert — last, and best-effort ─────────────────────────
+  // Only once the order is safely recorded and both emails have gone.
+  // A failure here is logged but never affects the order.
+  if (TNZ_AUTH_TOKEN) {
+    const how = m.fulfilment === 'delivery' ? `Delivery (${m.suburb || '?'})` : 'Pickup';
+    await sendStaffSms({
+      token: TNZ_AUTH_TOKEN,
+      to: STAFF_SMS_NUMBER,
+      reference: `Cake order ${String(session.id || '').slice(-8)}`,   // same reference as the confirmation page
+      testMode: /^(true|yes|1)$/i.test(process.env.TNZ_TEST_MODE || ''),
+      body: `${airtableProblem ? 'NOT IN AIRTABLE - add by hand. ' : ''}New order: ${m.order_summary || 'Cake'}. ${how} ${m.pickup_delivery_date || ''}. ${m.customer_name || ''} ${m.phone || ''}. $${amount} paid`
+    });
+  }
+
   // The order record (Airtable, or the bakery email if Airtable isn't set
   // up) is the one step that makes Stripe retry on failure. The customer
-  // email is best-effort: a failure is logged, but doesn't trigger a
-  // retry, as that would re-send everything else too.
+  // email and staff text are best-effort: a failure is logged, but doesn't
+  // trigger a retry, as that would re-send everything else too.
   return { statusCode: 200, body: 'OK' };
 };

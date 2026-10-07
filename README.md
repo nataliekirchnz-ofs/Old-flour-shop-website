@@ -65,17 +65,32 @@ line if delivering, and a "Credit Card Surcharge (1.8%)" line.
 
 **After payment (`stripe-webhook.js`), in this order:**
 1. The order is saved to Airtable.
-2. The bakery gets an order email. Hitting Reply on it writes straight
-   to the customer.
-3. The customer gets a confirmation email: their cakes, any cake
-   messages, a price breakdown (cakes, no added gluten, delivery,
-   Credit Card Surcharge, total), pickup or delivery details, and the
-   allergen note. Their replies go to theoldflourshop@gmail.com.
+2. The bakery gets an order email: the total in the heading, an
+   itemised receipt, then the customer and delivery details. Hitting
+   Reply on it writes straight to the customer.
+3. The customer gets a confirmation email with the same itemised
+   receipt, pickup or delivery details, and the allergen note. Their
+   replies go to theoldflourshop@gmail.com.
+
+**The itemised receipt** (in both emails) lists each cake with its
+quantity and price ("$135.00 each" when more than one), any cake
+messages under the cake, a "+ No added gluten" row where chosen, then
+Delivery (with suburb), Credit Card Surcharge and Total paid. The
+checkout function stores the lines in the payment's details
+(`receipt_0`, `receipt_1`, ...); the email only uses them if they add up
+exactly to what Stripe charged, and otherwise shows the simpler summary
+and total.
 
 See "If something goes wrong saving an order" at the end for what
 happens when Airtable or the email service has a problem.
 
-**No text messages.** ClickSend was tried and removed; nothing sends SMS.
+**Staff text alerts (TNZ).** After the order is saved and both emails
+have gone, a short text is sent to the staff phone (+64273399264), e.g.
+*"New order: 1x Key Lime Pie (no added gluten). Pickup Sat, 3 Oct 2026.
+Sarah Jones 021 123 4567. $137.50 paid"*. Customers are never texted.
+If Airtable refused the order, the text starts "NOT IN AIRTABLE - add by
+hand." A texting problem never affects the order itself. (ClickSend was
+tried earlier and removed.)
 
 **Security settings** live in `netlify.toml`. They only allow the site
 to load its own files plus Google Fonts. If you ever add something
@@ -729,6 +744,31 @@ now" near the top for the current behaviour.)*
 
 ## Still worth adding later (not included yet)
 - **Refunds** — handled manually via the Stripe Dashboard for now.
+
+## Staff text alerts (TNZ)
+
+Uses TNZ's REST API v3.00. Switched off until the token is added.
+
+1. In the TNZ Dashboard (my.tnz.co.nz): **Users** → your user → enable
+   API access → **API** tab → enable **Auth Token** → create one → **Copy**.
+2. In Netlify → **Environment variables**, add:
+
+| Key | Value |
+|---|---|
+| `TNZ_AUTH_TOKEN` | the Auth Token (tick "Contains secret values") |
+| `TNZ_TEST_MODE` | *(optional)* `true` to test without sending real texts |
+| `STAFF_SMS_NUMBER` | *(optional)* only if alerts should go somewhere other than +64273399264 |
+
+3. **Deploys → Trigger deploy → Deploy site**, then place a test order.
+   With `TNZ_TEST_MODE` = `true`, TNZ records the message as sent but
+   doesn't text anyone, so check it appears in the TNZ Dashboard. Then
+   delete `TNZ_TEST_MODE`, redeploy, and place another test order to get
+   a real text.
+
+If a text doesn't arrive, look in **Netlify → Logs → Functions →
+stripe-webhook** for a line starting "TNZ SMS error". A 401 means the
+token is wrong, or was refreshed in TNZ (refreshing cancels the old one,
+so paste the new one into Netlify and redeploy).
 
 ## If something goes wrong saving an order
 

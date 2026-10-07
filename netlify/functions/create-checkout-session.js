@@ -456,6 +456,27 @@ exports.handler = async (event) => {
     price_delivery_cents: String(deliveryFeeCents),
     price_surcharge_cents: String(cardSurchargeCents)
   };
+  // Itemised receipt for the emails: one entry per cart line —
+  // [cake name, quantity, price each in cents (before any gluten-free
+  // extra), gluten-free extra each in cents, [piped messages]]. Stripe
+  // stores at most 500 characters per detail, so it's split across up to
+  // 10 numbered details (receipt_0, receipt_1, ...) and joined back
+  // together by the webhook. If a (very large) order wouldn't fit, it's
+  // simply left out and the emails show the order without the itemised
+  // lines, as before.
+  const receiptJson = JSON.stringify(resolvedItems.map(i => {
+    const gfEach = i.glutenFree ? Math.round(GF_SURCHARGE * 100) : 0;
+    const msgs = i.messages.slice();
+    while (msgs.length && !msgs[msgs.length - 1]) msgs.pop();   // drop trailing blanks
+    return [i.name, i.qty, Math.round(i.price * 100) - gfEach, gfEach, msgs];
+  }));
+  const RECEIPT_CHUNK = 450, RECEIPT_MAX_CHUNKS = 10;
+  if (receiptJson.length <= RECEIPT_CHUNK * RECEIPT_MAX_CHUNKS) {
+    for (let k = 0; k * RECEIPT_CHUNK < receiptJson.length; k++) {
+      metadata[`receipt_${k}`] = receiptJson.slice(k * RECEIPT_CHUNK, (k + 1) * RECEIPT_CHUNK);
+    }
+  }
+
   Object.entries(metadata).forEach(([key, value]) => {
     params.append(`metadata[${key}]`, String(value).slice(0, 490)); // Stripe metadata values cap at 500 chars
   });
