@@ -35,14 +35,15 @@
 // ─────────────────────────────────────────────────────────────────────
 
 const CAKES = {
-  'chocolate-cake':          { name: 'Chocolate Celebration Cake', price: 135, glutenFreeOption: false, cakeMessage: true },
+  'chocolate-cake':          { name: 'Chocolate Celebration Cake', price: 145, glutenFreeOption: false, cakeMessage: true },
+  'vegan-chocolate-cake':    { name: 'Vegan Chocolate Cake',       price: 160, glutenFreeOption: true, cakeMessage: true },
   'raspberry-cheesecake':    { name: 'Raspberry Cheesecake',       price: 125, glutenFreeOption: true },
   'chocolate-marquise':      { name: 'Chocolate Marquise',         price: 130, glutenFreeOption: false },
-  'tiramisu-cake':           { name: 'Tiramisu Cake',              price: 115, glutenFreeOption: false },
+  'tiramisu-cake':           { name: 'Tiramisu Cake',              price: 130, glutenFreeOption: false },
   'lemon-velvet':            { name: 'Lemon Mousse Cake',          price: 120, glutenFreeOption: true },
   'orange-almond':           { name: 'Orange & Almond Cake',       price: 120, glutenFreeOption: false }, // naturally no added gluten already, not an "option"
   'passionfruit-cheesecake': { name: 'Passionfruit Cheesecake',    price: 125, glutenFreeOption: true },
-  'lemon-lover-cake':        { name: 'Lemon Lover Cake',           price: 115, glutenFreeOption: false, cakeMessage: true },
+  'lemon-lover-cake':        { name: 'Lemon Lover Cake',           price: 135, glutenFreeOption: false, cakeMessage: true },
   'raspberry-crumble':       { name: 'Raspberry Crumble Cake',     price: 100, glutenFreeOption: false },
   'boysenberry-cheesecake':  { name: 'Boysenberry Cheesecake',     price: 125, glutenFreeOption: true },
   'key-lime-pie':            { name: 'Key Lime Pie',               price: 130, glutenFreeOption: true },
@@ -72,6 +73,14 @@ const DELIVERY_ZONES = [
 const BLACKOUT_DATES = ['2026-12-25', '2027-01-01'];
 
 const CUTOFF_HOURS = 48;
+// How long Stripe's payment page stays open before it expires (Stripe
+// allows 30 minutes to 24 hours). Kept short so nobody can choose a date,
+// leave the payment page open and pay once it's inside the 48 hours.
+// The chosen date must still be valid at the moment the payment page
+// expires, not just now — otherwise a page opened at 11:50pm could be
+// paid after midnight for a date that's no longer allowed. Must match
+// CHECKOUT_WINDOW_MINUTES in index.html.
+const CHECKOUT_WINDOW_MINUTES = 35;
 const MAX_BOOKING_MONTHS_AHEAD = 6; // must match MAX_BOOKING_MONTHS_AHEAD in index.html
 const MAX_ITEM_QTY = 20;      // sanity cap per cake line
 
@@ -185,7 +194,7 @@ function minBookableDateNZ() {
   // be loosened back to a floor, or the stated 48-hour promise can be
   // silently broken for early same-day pickups.
   const now = nzNowAsUTC();
-  const cutoff = new Date(now.getTime() + CUTOFF_HOURS * 3600 * 1000);
+  const cutoff = new Date(now.getTime() + CUTOFF_HOURS * 3600 * 1000 + CHECKOUT_WINDOW_MINUTES * 60 * 1000);
   const atMidnight = cutoff.getUTCHours() === 0 && cutoff.getUTCMinutes() === 0 && cutoff.getUTCSeconds() === 0;
   let minDate = new Date(Date.UTC(cutoff.getUTCFullYear(), cutoff.getUTCMonth(), cutoff.getUTCDate(), 0, 0, 0));
   if (!atMidnight) { minDate = new Date(minDate.getTime() + 24 * 3600 * 1000); }
@@ -335,7 +344,15 @@ exports.handler = async (event) => {
 
   // ---- 5. validate date: real calendar date, at least 48 hours out, not more than 6 months out, not a blackout date ----
   if (!isValidBookingDate(order.date)) {
-    return { statusCode: 400, body: JSON.stringify({ error: `Please choose a valid date between 48 hours and ${MAX_BOOKING_MONTHS_AHEAD} months from now.` }) };
+    // Say which way it's wrong — most often it's a date that was fine
+    // when chosen but has since slipped inside the 48 hours (the website
+    // normally catches this first; this is the backstop).
+    const tooSoon = /^\d{4}-\d{2}-\d{2}$/.test(order.date)
+      && new Date(order.date + 'T00:00:00Z') < minBookableDateNZ();
+    const error = tooSoon
+      ? 'That date is now inside our 48-hour notice window. Please go back and choose a later date.'
+      : `Please choose a valid date between 48 hours and ${MAX_BOOKING_MONTHS_AHEAD} months from now.`;
+    return { statusCode: 400, body: JSON.stringify({ error }) };
   }
   if (BLACKOUT_DATES.includes(order.date)) {
     return { statusCode: 400, body: JSON.stringify({ error: "We're closed on that date. Please choose another." }) };
@@ -365,6 +382,7 @@ exports.handler = async (event) => {
   params.append('success_url', `${SITE_URL}/?order=success&session_id={CHECKOUT_SESSION_ID}`);
   params.append('cancel_url', `${SITE_URL}/?order=cancelled`);
   params.append('customer_email', order.email);
+  params.append('expires_at', String(Math.floor(Date.now() / 1000) + CHECKOUT_WINDOW_MINUTES * 60));
 
   let lineIndex = 0;
   let itemsSubtotalCents = 0;
@@ -412,17 +430,23 @@ exports.handler = async (event) => {
   // e.g. 'Chocolate Celebration Cake: "Happy 30th Sarah" | Lemon Lover
   // Cake: "Congrats Mum"'. With more than one of the same cake, each is
   // numbered ("Chocolate Celebration Cake 1: ..., ... 2: ...").
+  // The no-added-gluten version is named too, so two lines of the same
+  // cake (one standard, one without added gluten) can't be confused.
   const cakeMessages = [];
   resolvedItems.forEach(item => {
     item.messages.forEach((msg, i) => {
-      if (msg) cakeMessages.push(`${item.name}${item.qty > 1 ? ` ${i + 1}` : ''}: "${msg}"`);
+      if (msg) cakeMessages.push(`${item.name}${item.glutenFree ? ' (no added gluten)' : ''}${item.qty > 1 ? ` ${i + 1}` : ''}: "${msg}"`);
     });
   });
   const cakeMessageText = cakeMessages.join(' | ');
-  // Stripe only stores 500 characters per detail, so rather than silently
-  // cutting messages off, a (very large) order that goes over is stopped
-  // with a clear message instead.
-  if (cakeMessageText.length > 490) {
+  // Stripe only stores 500 characters per detail, so the messages are
+  // split across several numbered details (cake_message, cake_message_1,
+  // cake_message_2, ...) and joined back together by the webhook. 12
+  // pieces hold about 5,800 characters, more than the largest order the
+  // website allows. Only an order beyond that (impossible from the
+  // website itself) is stopped, rather than cutting messages off.
+  const MESSAGE_CHUNK = 490, MESSAGE_MAX_CHUNKS = 12;
+  if (cakeMessageText.length > MESSAGE_CHUNK * MESSAGE_MAX_CHUNKS) {
     return { statusCode: 400, body: JSON.stringify({ error: 'That\'s more cake messages than we can take online in one order. Please contact us and we\'ll sort it out directly.' }) };
   }
 
@@ -447,7 +471,7 @@ exports.handler = async (event) => {
     time_window: TIME_WINDOWS[order.fulfil] || '',
     customer_name: `${order.fname} ${order.lname}`,
     phone: order.phone || '',
-    cake_message: cakeMessageText,
+    cake_message: cakeMessageText.slice(0, MESSAGE_CHUNK), // any remainder goes in cake_message_1, _2 ... below
     // Price breakdown (in cents) so the confirmation email can show how
     // the total is made up. Display only — the charge itself comes from
     // the line items above.
@@ -460,7 +484,7 @@ exports.handler = async (event) => {
   // [cake name, quantity, price each in cents (before any gluten-free
   // extra), gluten-free extra each in cents, [piped messages]]. Stripe
   // stores at most 500 characters per detail, so it's split across up to
-  // 10 numbered details (receipt_0, receipt_1, ...) and joined back
+  // 20 numbered details (receipt_0, receipt_1, ...) and joined back
   // together by the webhook. If a (very large) order wouldn't fit, it's
   // simply left out and the emails show the order without the itemised
   // lines, as before.
@@ -470,12 +494,20 @@ exports.handler = async (event) => {
     while (msgs.length && !msgs[msgs.length - 1]) msgs.pop();   // drop trailing blanks
     return [i.name, i.qty, Math.round(i.price * 100) - gfEach, gfEach, msgs];
   }));
-  const RECEIPT_CHUNK = 450, RECEIPT_MAX_CHUNKS = 10;
+  // Up to 20 receipt pieces (9,000 characters) — enough for the largest
+  // order the website allows, messages included.
+  const RECEIPT_CHUNK = 450, RECEIPT_MAX_CHUNKS = 20;
   if (receiptJson.length <= RECEIPT_CHUNK * RECEIPT_MAX_CHUNKS) {
     for (let k = 0; k * RECEIPT_CHUNK < receiptJson.length; k++) {
       metadata[`receipt_${k}`] = receiptJson.slice(k * RECEIPT_CHUNK, (k + 1) * RECEIPT_CHUNK);
     }
   }
+  // The rest of the cake messages, if they didn't fit in cake_message.
+  for (let k = 1; k * MESSAGE_CHUNK < cakeMessageText.length; k++) {
+    metadata[`cake_message_${k}`] = cakeMessageText.slice(k * MESSAGE_CHUNK, (k + 1) * MESSAGE_CHUNK);
+  }
+  // Stripe allows at most 50 details per payment. The most this can reach
+  // is 15 standard + 11 extra message pieces + 20 receipt pieces = 46.
 
   Object.entries(metadata).forEach(([key, value]) => {
     params.append(`metadata[${key}]`, String(value).slice(0, 490)); // Stripe metadata values cap at 500 chars

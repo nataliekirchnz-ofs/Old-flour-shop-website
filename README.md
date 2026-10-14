@@ -31,14 +31,19 @@ headed "History" record earlier rounds of changes; some of what they
 describe has since been changed or removed. Where they disagree with
 this section, this section is right.
 
-**Menu:** 11 cakes, each a single flat price. The no-added-gluten
-option (+$7.50) is offered on Raspberry Cheesecake, Lemon Mousse Cake,
-Passionfruit Cheesecake, Boysenberry Cheesecake and Key Lime Pie
-(`glutenFreeOption: true`). Orange & Almond Cake and Chocolate Marquise
+**Menu:** 12 cakes, each a single flat price. The no-added-gluten
+option (+$7.50) is offered on Vegan Chocolate Cake, Raspberry Cheesecake,
+Lemon Mousse Cake, Passionfruit Cheesecake, Boysenberry Cheesecake and
+Key Lime Pie (`glutenFreeOption: true`). Vegan Chocolate Cake ($160)
+was added 14 October 2026. Menu order (rows of three): chocolate cakes,
+cheesecakes, lemon & lime, then Tiramisu, Raspberry Crumble and
+Orange & Almond. Orange & Almond Cake and Chocolate Marquise
 are tagged "Made Without Added Gluten" and have no checkbox.
+Prices changed 14 October 2026: Chocolate Celebration Cake $145,
+Lemon Lover Cake $135, Tiramisu Cake $130.
 
-**Cake messages:** only the Chocolate Celebration Cake and Lemon Lover
-Cake take a piped message (tag "Custom Message Available" in
+**Cake messages:** only the Chocolate Celebration Cake, Vegan Chocolate
+Cake and Lemon Lover Cake take a piped message (tag "Custom Message Available" in
 `index.html`, `cakeMessage: true` in `create-checkout-session.js`).
 Each of those cakes gets its own optional message box in the cart,
 up to 30 characters. Emoji and symbols are removed as they're typed;
@@ -59,6 +64,107 @@ characters each; delivery address up to 300; phone 7 to 15 digits. The
 earliest bookable date is decided in New Zealand time; Christmas Day and
 New Year's Day are blocked (`BLACKOUT_DATES`).
 
+**Stripe's payment page expires after 35 minutes** (`CHECKOUT_WINDOW_MINUTES`,
+in both `index.html` and `create-checkout-session.js`), and the chosen
+date must still be at least 48 hours away when it expires — so nobody
+can leave the payment page open and pay once their date is too close.
+If a customer's page expires, they come back to the site and their
+order is still filled in. Because the earliest allowed date moves on
+as the clock does (it rolls forward a day each evening), the website
+rechecks the chosen date when the customer continues to the review
+step and again when they press pay; if it's no longer allowed, they're
+taken back to the date step with an explanation, details kept.
+
+**Order confirmed screen** (after paying) shows what was ordered, the
+amount paid, and the pickup or delivery date — e.g. "Pickup from our
+Oneroa bakery on Sat, 17 Oct 2026, anytime 7:30am – 3pm" — taken from
+Stripe's record of the order, so customers can check their date
+straight away.
+
+**Page structure for screen readers:** everything between the header
+and footer sits in a `<main>` area, and the footer's "Shop" and "Visit"
+headings are level-2 headings (styled exactly as before).
+
+**Cake photos come in three sizes.** Each cake has its original photo
+(e.g. `images/key-lime-pie.webp`, 1200×900) plus two smaller copies
+next to it: `images/key-lime-pie-640.webp` and
+`images/key-lime-pie-960.webp`. Each visitor's browser downloads only
+the size their screen needs (laptops usually the 640, high-density
+phones the 960), which roughly halves what a laptop downloads and cuts
+about a quarter off phones. **When you add or replace a cake photo, make
+all three:** export the photo as WebP at 1200, 960 and 640 pixels wide
+(4:3, e.g. with squoosh.app), name them as above, and put all three in
+`/images`. If the small copies are missing, those visitors see a broken
+image. The cart thumbnails use the 640 copy.
+
+**Safety net:** if one of the smaller copies is ever missing, the page
+automatically shows the full-size photo instead of a broken image (it's
+just a bit slower to load on phones). So a forgotten copy is never
+visible to customers, but it's still worth adding all three sizes.
+
+**Phone/tablet menu:** below 861px wide the header links (Cakes, How it
+works, Visit) are hidden, so a round menu button (☰) next to "Order a
+cake" opens them as a short list that drops down over the page. It
+closes when a section is picked, on Escape, when tapping elsewhere, when
+the visitor starts scrolling (swipe, wheel or trackpad), or if the screen
+turns wide. On
+narrow phones (400px and under) the header is slightly tighter so "The
+Old Flour Shop" stays on one line. Desktop is unchanged.
+
+**Money is shown with thousands separators** ($1,740.00) on the website,
+in the emails and in the staff text, matching Stripe. Airtable's "Amount
+Paid" still receives a plain number. In the order docket, prices never
+break across lines on narrow phones (the description wraps instead).
+
+**Back button:** each step of the order form has its own browser-history
+entry, so on a phone, Back goes to the previous step, Back on step 1
+closes the form, and only the next Back leaves the site. Closing the
+form with ✕, Escape or Done tidies those entries away again.
+
+**Coming back from Stripe without paying** (Stripe's back arrow) takes
+the customer straight to "Review & pay", with a note that they haven't
+been charged and their order is saved. Every step's checks still run
+on the way, so if something no longer passes (e.g. their date is now
+inside the 48 hours) it stops at that step and explains why.
+
+**Jump links** (header, "See the cake menu", footer) stop just below the
+sticky header, so each section's heading is visible.
+
+**Reduce motion:** visitors who've turned on "reduce motion" on their
+device get no smooth scrolling, photo zoom, button lift or pop-in
+animation.
+
+The shopfront photo in "Find us" now waits until the visitor scrolls
+near it before downloading, and the delivery-address box tells phones
+to autofill just the street line (suburb is chosen from the list).
+
+**Prices are labelled NZD** on every cake card, in a line under the
+menu heading, and on the order total ("TOTAL (NZD)").
+
+**Time limit:** Netlify stops a function after 10 seconds. The webhook
+gives each outside service only part of that time (Airtable 2.5s per
+step, then the emails and staff text share what's left) and always
+replies to Stripe by about 8.5 seconds, so it's never cut off mid-way.
+
+**Same payment arriving twice at once:** right after saving the
+Airtable row, the webhook checks for another row for the same payment.
+If there is one, only the earliest-saved row is kept and the later copy
+removes its own, so each order is one row, two emails and one text.
+
+**Large message orders:** cake messages are stored with the payment in
+several pieces (`cake_message`, `cake_message_1`, ...) and joined back
+together for the emails and Airtable, so even the largest order the
+website allows (dozens of messaged cakes) goes through.
+
+**Repeats and retries (`stripe-webhook.js`):** if anything temporary
+goes wrong while processing a paid order (Airtable or the email service
+not responding), Stripe is asked to try again. Every step is safe to
+repeat: the Airtable row is only created if it isn't there already,
+each email carries a fixed key so Resend never sends it twice (Resend
+remembers these for 24 hours), and the staff text only goes out once.
+If Airtable can't be searched, the order waits for Stripe's retry
+rather than risk being saved twice.
+
 **At Stripe:** one line per cake (gluten-free versions named
 "(no added gluten)" and priced with the extra included), a delivery
 line if delivering, and a "Credit Card Surcharge (1.8%)" line.
@@ -73,7 +179,7 @@ line if delivering, and a "Credit Card Surcharge (1.8%)" line.
    replies go to theoldflourshop@gmail.com.
 
 **The itemised receipt** (in both emails) lists each cake with its
-quantity and price ("$135.00 each" when more than one), any cake
+quantity and price ("$145.00 each" when more than one), any cake
 messages under the cake, a "+ No added gluten" row where chosen, then
 Delivery (with suburb), Credit Card Surcharge and Total paid. The
 checkout function stores the lines in the payment's details
@@ -129,6 +235,7 @@ the old one — worth checking after every menu change.
 The same applies to these settings, which also exist in both files and
 must match: `GF_SURCHARGE` (no-added-gluten extra), `CARD_SURCHARGE_RATE`
 (1.8%), `BLACKOUT_DATES` (closed days), `CUTOFF_HOURS` (notice needed),
+`CHECKOUT_WINDOW_MINUTES` (how long the payment page stays open),
 `MAX_BOOKING_MONTHS_AHEAD`, which cakes offer gluten-free and which take
 a cake message, and the cake-message character rules.
 
@@ -776,8 +883,13 @@ When a payment succeeds, the webhook saves the order record first:
 Airtable if it's set up, otherwise the bakery email. If that step fails
 (for example Airtable or Resend is briefly down), the webhook tells Stripe
 so, and **Stripe automatically tries again**, repeatedly for up to 3 days.
-Nothing is emailed until the order has been saved, so a retry
-never sends double emails.
+Nothing is emailed until the order has been saved. If the order is
+saved but an email doesn't go out (or the webhook is cut off before
+sending), Stripe's retry finds the order already in Airtable, doesn't
+save it again, and sends only the email(s) that didn't go out — each
+email has a fixed key, so Resend never sends the same one twice. If
+Airtable can't even be searched, the webhook waits for Stripe's retry
+instead of risking a second copy of the order.
 
 **If Airtable refuses the order because of how it's set up** (a column
 renamed or deleted, the table renamed, or the access token changed),
@@ -786,8 +898,13 @@ becomes the record: it arrives with "⚠️ NOT IN AIRTABLE" in the subject
 and a red box asking you to add the order to Airtable by hand. (If that
 email can't be sent either, Stripe retries as above.)
 
-The customer email is sent after that, and a failure there is logged
-but doesn't trigger a retry.
+The customer email is sent alongside the bakery email. A temporary
+failure (Resend down or busy) triggers a retry like anything else; a
+permanent refusal (e.g. an invalid address) is logged and not retried.
+The staff text is sent once, on the run that first saves the order.
+Note: Resend remembers email keys for 24 hours, so in the unlikely case
+that Stripe is still retrying a day later, the bakery email could arrive
+a second time.
 
 You can see any retries in **Stripe Dashboard → Developers → Webhooks →
 your endpoint**, where failed attempts show in red with the time of the

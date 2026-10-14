@@ -54,32 +54,101 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-// IDEMPOTENCY — Stripe explicitly documents that webhooks can be delivered
-// more than once for the same event (retries, network blips on their end),
-// so this function must tolerate being called twice for one payment
-// without emailing the customer/bakery twice or double-logging the order.
+// REPEATS AND RETRIES — Stripe can deliver the same payment more than
+// once (its own retries, or ours: this function asks Stripe to try again
+// whenever something temporary goes wrong). Every step is written so a
+// repeat is safe:
+//   - the Airtable row is only created if it isn't there already;
+//   - each email is sent with a fixed "idempotency key" made from the
+//     order, so Resend sends it at most once (Resend remembers keys for
+//     24 hours) — a repeat simply re-sends any email that didn't go
+//     out the first time, and skips the ones that did;
+//   - the staff text only goes out on the run that created the order.
 //
 // This Set lives at module scope, so it persists for the lifetime of a
-// warm Netlify function container — a fast, free first line of defence
-// that catches the most common case (a near-immediate Stripe retry
-// landing on the same warm instance). It is NOT durable across cold
-// starts or multiple concurrent instances, which is what the Airtable
-// check further below (isDuplicateInAirtable) is for.
+// warm Netlify function container — a fast, free first check for an order
+// this container has already finished completely.
 const processedEventIds = new Set();
 
-async function isDuplicateInAirtable(sessionId, apiKey, baseId, tableName) {
-  if (!apiKey || !baseId) return false; // can't check — don't block processing over it
+// Looks the order up in Airtable by its Stripe session ID. Returns:
+//   'found'   — already saved by an earlier run
+//   'missing' — not saved yet
+//   'retry'   — Airtable couldn't be reached or was busy; try again later
+//   'setup'   — Airtable refused because of how it's set up (wrong token,
+//               base, table or column name); retrying won't fix that
+async function findOrderInAirtable(sessionId, apiKey, baseId, tableName, timeoutMs) {
   try {
     const formula = encodeURIComponent(`{Stripe Session ID}='${sessionId}'`);
     const res = await fetch(
       `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}?filterByFormula=${formula}&maxRecords=1`,
-      { headers: { 'Authorization': `Bearer ${apiKey}` } }
+      { headers: { 'Authorization': `Bearer ${apiKey}` }, signal: AbortSignal.timeout(timeoutMs) }
     );
-    if (!res.ok) return false; // if the check itself fails, don't block a real order over it
+    if ([401, 403, 404, 422].includes(res.status)) return 'setup';
+    if (!res.ok) return 'retry';
     const data = await res.json();
-    return Array.isArray(data.records) && data.records.length > 0;
+    return Array.isArray(data.records) && data.records.length > 0 ? 'found' : 'missing';
   } catch (e) {
+    return 'retry';
+  }
+}
+
+// If the same payment arrives twice at the same moment, both copies can
+// find "missing" and both save a row. So right after saving, each copy
+// looks again: if there's more than one row for this order, only the
+// earliest-saved one is kept and any later copy removes the row it just
+// made itself. Both copies see the same rows, so exactly one survives.
+// Returns true if this run's row is the one kept (or the check couldn't
+// be done — the row is then simply left in place).
+async function keepOnlyFirstRow(sessionId, myRecordId, apiKey, baseId, tableName, timeoutMs) {
+  const table = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}`;
+  try {
+    const formula = encodeURIComponent(`{Stripe Session ID}='${sessionId}'`);
+    const res = await fetch(`${table}?filterByFormula=${formula}&maxRecords=10`,
+      { headers: { 'Authorization': `Bearer ${apiKey}` }, signal: AbortSignal.timeout(timeoutMs) });
+    if (!res.ok) return true;
+    const rows = ((await res.json()).records || []).slice()
+      .sort((a, b) => (a.createdTime || '').localeCompare(b.createdTime || '') || a.id.localeCompare(b.id));
+    if (rows.length < 2 || rows[0].id === myRecordId) return true;
+    await fetch(`${table}/${myRecordId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${apiKey}` }, signal: AbortSignal.timeout(timeoutMs) })
+      .catch(() => {});
+    console.error('Same payment arrived twice at once — removed the extra Airtable row', myRecordId);
     return false;
+  } catch (e) {
+    return true;
+  }
+}
+
+// Sends one email through Resend. The idempotency key means a repeat of
+// the same order never sends the same email twice. Returns:
+//   'sent'      — sent now, or already sent by an earlier run
+//   'retry'     — temporary problem (no response, busy, Resend down)
+//   'failed'    — Resend refused it for good (e.g. an invalid address);
+//                 retrying wouldn't help, so it's only logged
+async function sendEmail(apiKey, idempotencyKey, email, label, timeoutMs) {
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey
+      },
+      body: JSON.stringify(email),
+      signal: AbortSignal.timeout(timeoutMs)
+    });
+    if (res.ok) return 'sent';
+    const detail = await res.text().catch(() => '');
+    if (res.status === 409) {
+      // Same key seen before. "concurrent" = an earlier run is sending it
+      // right now (check again later); otherwise it was already sent.
+      if (/concurrent/i.test(detail)) return 'retry';
+      return 'sent';
+    }
+    console.error(`Resend error (${label}):`, res.status, detail);
+    return (res.status === 429 || res.status >= 500) ? 'retry' : 'failed';
+  } catch (err) {
+    console.error(`Failed to send ${label}:`, err.name === 'TimeoutError' ? `no response within ${Math.round(timeoutMs / 1000)} seconds` : err);
+    return 'retry';
   }
 }
 
@@ -106,11 +175,11 @@ function toPlainSms(str) {
     .trim();
 }
 
-// Sends one text. Never throws, and each attempt gives up after 4 seconds,
-// so a problem at TNZ can never hold up or break order processing.
+// Sends one text. Never throws, and gives up once the time it's given
+// runs out, so a problem at TNZ can never hold up or break order processing.
 // TNZ's docs mention both "Bearer" and "Basic" for the Authorization
 // header, so "Bearer" is tried first and "Basic" only if that's refused.
-async function sendStaffSms({ token, to, body, reference, testMode }) {
+async function sendStaffSms({ token, to, body, reference, testMode, timeLeft }) {
   const payload = JSON.stringify({
     ToNumber: to,
     Message: toPlainSms(body),
@@ -128,7 +197,7 @@ async function sendStaffSms({ token, to, body, reference, testMode }) {
           'Authorization': `${scheme} ${token}`
         },
         body: payload,
-        signal: AbortSignal.timeout(4000)
+        signal: AbortSignal.timeout(timeLeft())
       });
       if (res.ok) return;
       const detail = await res.text().catch(() => '');
@@ -138,7 +207,7 @@ async function sendStaffSms({ token, to, body, reference, testMode }) {
       console.error('TNZ SMS error:', res.status, detail);
       return;
     } catch (err) {
-      console.error('Failed to send staff SMS via TNZ:', err.name === 'TimeoutError' ? 'no response within 4 seconds' : err);
+      console.error('Failed to send staff SMS via TNZ:', err.name === 'TimeoutError' ? 'no response in the time available' : err);
       return;
     }
   }
@@ -200,6 +269,14 @@ exports.handler = async (event) => {
   const TNZ_AUTH_TOKEN = process.env.TNZ_AUTH_TOKEN || '';
   const STAFF_SMS_NUMBER = process.env.STAFF_SMS_NUMBER || '+64273399264'; // staff phone
 
+  // Netlify stops this function after 10 seconds, wherever it's got to.
+  // Every outside call below is given only part of that time, so the
+  // function always finishes (and replies to Stripe) inside the limit,
+  // rather than being cut off part-way through, e.g. mid-text.
+  const startedAt = Date.now();
+  const DEADLINE_MS = 8500;
+  const timeLeft = (cap = DEADLINE_MS) => Math.max(1000, Math.min(cap, DEADLINE_MS - (Date.now() - startedAt)));
+
   if (!STRIPE_WEBHOOK_SECRET || !RESEND_API_KEY) {
     console.error('Missing STRIPE_WEBHOOK_SECRET or RESEND_API_KEY environment variable.');
     return { statusCode: 500, body: 'Server not configured.' };
@@ -241,22 +318,19 @@ exports.handler = async (event) => {
     return { statusCode: 200, body: 'Checkout completed but not paid yet — waiting for payment.' };
   }
 
-  // Fast path: has this order already been handled by this warm
-  // container? Keyed by session (the order itself), not by event, since
-  // one order can arrive under either event type above. (See
-  // processedEventIds comment above for what this does and doesn't cover.)
+  // Fast path: has this container already finished this order completely?
+  // Keyed by session (the order itself), not by event, since one order can
+  // arrive under either event type above.
   if (processedEventIds.has(session.id)) {
     return { statusCode: 200, body: 'Already processed (duplicate webhook delivery, same instance) — skipped.' };
   }
 
-  // Durable path: has this session already been logged to Airtable by a
-  // previous (possibly different) function instance? Only runs when
-  // Airtable is configured — see README for setup.
-  if (await isDuplicateInAirtable(session.id, AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME)) {
-    return { statusCode: 200, body: 'Already processed (duplicate webhook delivery, found in Airtable) — skipped.' };
-  }
-
   const m = session.metadata || {};
+  // Cake messages can be spread over several details (cake_message,
+  // cake_message_1, cake_message_2 ...) — see create-checkout-session.js.
+  for (let k = 1; m[`cake_message_${k}`] !== undefined; k++) {
+    m.cake_message = (m.cake_message || '') + m[`cake_message_${k}`];
+  }
   const amount = ((session.amount_total || 0) / 100).toFixed(2);
   const currency = (session.currency || 'nzd').toUpperCase();
   const customerEmail = session.customer_details?.email || session.customer_email || '';
@@ -283,7 +357,10 @@ exports.handler = async (event) => {
   // receipt_1, ...), and only used if they add up exactly to what Stripe
   // actually charged — otherwise (e.g. an order placed before this was
   // added) the emails fall back to the simpler layout.
-  const money = c => `$${(c / 100).toFixed(2)}`;
+  // Thousands separators for display ($1,740.00), matching the website and Stripe.
+  const withCommas = str => str.replace(/^(\d+)/, d => d.replace(/\B(?=(\d{3})+$)/g, ','));
+  const money = c => `$${withCommas((c / 100).toFixed(2))}`;
+  const amountShown = withCommas(amount); // display only — Airtable still gets the plain number
   const cents = key => {
     const n = Number(m[key]);
     return Number.isInteger(n) && n >= 0 ? n : null;
@@ -322,7 +399,7 @@ exports.handler = async (event) => {
     rows.push(`<tr><td colspan="2" style="border-top:1px dashed #E3E1D6;padding:0;height:6px;"></td></tr>`);
     if (deliveryCents) rows.push(`<tr><td style="padding:3px 0;color:${G};">Delivery${m.suburb ? ` (${safeSuburb})` : ''}</td><td style="padding:3px 0;text-align:right;white-space:nowrap;">${money(deliveryCents)}</td></tr>`);
     if (surchargeCents) rows.push(`<tr><td style="padding:3px 0;color:${G};">Credit Card Surcharge (1.8%)</td><td style="padding:3px 0;text-align:right;white-space:nowrap;">${money(surchargeCents)}</td></tr>`);
-    rows.push(`<tr><td style="border-top:1px solid #2B3C25;padding:8px 0 0;font-size:16px;"><strong>Total paid</strong></td><td style="border-top:1px solid #2B3C25;padding:8px 0 0;text-align:right;font-size:16px;white-space:nowrap;"><strong>$${amount} ${currency}</strong></td></tr>`);
+    rows.push(`<tr><td style="border-top:1px solid #2B3C25;padding:8px 0 0;font-size:16px;"><strong>Total paid</strong></td><td style="border-top:1px solid #2B3C25;padding:8px 0 0;text-align:right;font-size:16px;white-space:nowrap;"><strong>$${amountShown} ${currency}</strong></td></tr>`);
     return `<table style="border-collapse:collapse;width:100%;max-width:460px;margin:0 0 20px;font-size:14.5px;">${rows.join('')}</table>`;
   })();
   const sectionLabel = text => `<p style="margin:0 0 6px;font-size:12px;letter-spacing:.06em;color:${G};">${text}</p>`;
@@ -333,7 +410,7 @@ exports.handler = async (event) => {
       <table style="border-collapse:collapse;width:100%;margin-bottom:16px;">
         <tr><td style="padding:6px 12px 6px 0;color:${G};">Cake</td><td><strong>${safeSummary}</strong></td></tr>
         ${m.cake_message ? `<tr><td style="padding:6px 12px 6px 0;color:${G};">Cake message</td><td>${safeCakeMessage}</td></tr>` : ''}
-        <tr><td style="padding:6px 12px 6px 0;color:${G};">Total paid</td><td><strong>$${amount} ${currency}</strong></td></tr>
+        <tr><td style="padding:6px 12px 6px 0;color:${G};">Total paid</td><td><strong>$${amountShown} ${currency}</strong></td></tr>
       </table>`;
 
   const cakeWord = parseInt(m.item_count, 10) > 1 ? 'cakes' : 'cake';
@@ -369,15 +446,17 @@ exports.handler = async (event) => {
     </div>
   `;
 
-  // ── Save the order record first — this step must succeed ─────────────
-  // If the order can't be saved, we return an error so Stripe tries again
-  // automatically (it keeps retrying for up to 3 days). Nothing has been
-  // emailed yet at this point, so a retry never sends doubles.
+  // ── Save the order record first ─────────────────────────────────────
+  // Whenever something temporary goes wrong from here on, we return an
+  // error so Stripe tries again automatically (it keeps retrying for up
+  // to 3 days). Every step below is safe to repeat (see REPEATS AND
+  // RETRIES at the top), so a retry only finishes whatever didn't happen
+  // the first time — no double rows, no double emails.
   // Airtable is the record when it's set up; if it isn't, the bakery
-  // email is the record instead (see below).
+  // email is the record instead.
   const retryLater = (why) => {
     console.error(`${why} — returning an error so Stripe retries this order.`);
-    return { statusCode: 500, body: 'Temporary problem saving order; please retry.' };
+    return { statusCode: 500, body: 'Temporary problem processing order; please retry.' };
   };
   const airtableConfigured = !!(AIRTABLE_API_KEY && AIRTABLE_BASE_ID);
   // Set if Airtable refuses the order because of how it's set up (e.g. a
@@ -385,8 +464,27 @@ exports.handler = async (event) => {
   // can never fix that, so instead the bakery email goes out as the
   // record, with a warning to add the order to Airtable by hand.
   let airtableProblem = '';
+  // True only on the run that actually creates the order (or when there's
+  // no Airtable to check) — used so the staff text isn't sent twice.
+  let newOrder = true;
 
-  if (AIRTABLE_API_KEY && AIRTABLE_BASE_ID) {
+  let existing = 'missing';
+  if (airtableConfigured) {
+    existing = await findOrderInAirtable(session.id, AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, timeLeft(2500));
+    if (existing === 'retry') {
+      // Can't tell whether it's already saved. Rather than risk saving and
+      // emailing it twice, wait and let Stripe try again.
+      return retryLater('Could not check Airtable for this order');
+    }
+    if (existing === 'found') newOrder = false;
+    if (existing === 'setup') airtableProblem = 'Airtable could not be searched (check the token, base, table and the "Stripe Session ID" column)';
+  }
+
+  // Only create the row if the search above found nothing. (If the search
+  // itself was refused because of Airtable's setup, saving would fail the
+  // same way — airtableProblem is already set, and the bakery email
+  // becomes the record.)
+  if (airtableConfigured && existing === 'missing') {
     try {
       const airtableRes = await fetch(
         `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}`,
@@ -396,6 +494,7 @@ exports.handler = async (event) => {
             'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
             'Content-Type': 'application/json'
           },
+          signal: AbortSignal.timeout(timeLeft(2500)),
           body: JSON.stringify({
             records: [{
               fields: {
@@ -436,6 +535,15 @@ exports.handler = async (event) => {
         } else {
           return retryLater('Could not save order to Airtable');
         }
+      } else {
+        // Saved. Make sure a second copy of this same payment, arriving at
+        // the same moment, hasn't also saved a row (see keepOnlyFirstRow).
+        const created = await airtableRes.json().catch(() => ({}));
+        const myRecordId = created?.records?.[0]?.id;
+        if (myRecordId) {
+          const kept = await keepOnlyFirstRow(session.id, myRecordId, AIRTABLE_API_KEY, AIRTABLE_BASE_ID, AIRTABLE_TABLE_NAME, timeLeft(1500));
+          if (!kept) newOrder = false; // the other copy is handling this order; no second staff text
+        }
       }
     } catch (err) {
       console.error('Failed to log order to Airtable:', err);
@@ -452,9 +560,9 @@ exports.handler = async (event) => {
         <span style="font-size:12px;">Airtable said: ${escapeHtml(airtableProblem)}</span>
       </div>` : ''}
       ${receiptOk
-        ? `<h2 style="margin:0 0 14px;">New cake order — $${amount}</h2>${sectionLabel('ORDER')}${receiptHtml}${sectionLabel('DETAILS')}`
+        ? `<h2 style="margin:0 0 14px;">New cake order — $${amountShown}</h2>${sectionLabel('ORDER')}${receiptHtml}${sectionLabel('DETAILS')}`
         : `<h2 style="margin:0 0 12px;">New cake order — ${safeSummary || 'Unknown cake'}</h2>
-      <p style="margin:0 0 16px;"><strong>Total paid:</strong> $${amount} ${currency}</p>`}
+      <p style="margin:0 0 16px;"><strong>Total paid:</strong> $${amountShown} ${currency}</p>`}
       <table style="border-collapse:collapse;width:100%;max-width:480px;">
         <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Customer</td><td>${safeCustomerName}</td></tr>
         <tr><td style="padding:4px 12px 4px 0;color:#5F6350;">Phone</td><td>${safePhone}</td></tr>
@@ -473,85 +581,64 @@ exports.handler = async (event) => {
     </div>
   `;
 
-  try {
-    const bakeryRes = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: 'The Old Flour Shop Orders <orders@theoldflourshop.co.nz>',
-        to: [BAKERY_EMAIL],
-        // Hitting Reply on this order email writes straight to the
-        // customer (e.g. to ask about their cake). Falls back to the
-        // bakery's own inbox only if the order somehow has no email.
-        reply_to: customerEmail || BAKERY_EMAIL,
-        subject: `${airtableProblem ? '⚠️ NOT IN AIRTABLE — ' : ''}New order: ${m.order_summary || 'Cake'} — $${amount}`,
-        html: bakeryEmailHtml
+  // ── Emails (and staff text) — all at once, to keep this quick ─────────
+  // Each email has its own fixed key made from the order, so a repeat of
+  // this order (a Stripe retry) never sends the same email twice. The
+  // staff text only goes out on the run that first saved the order.
+  const emailKey = kind => `order-${session.id}-${kind}`;
+  const bakeryEmail = sendEmail(RESEND_API_KEY, emailKey('bakery'), {
+    from: 'The Old Flour Shop Orders <orders@theoldflourshop.co.nz>',
+    to: [BAKERY_EMAIL],
+    // Hitting Reply on this order email writes straight to the
+    // customer (e.g. to ask about their cake). Falls back to the
+    // bakery's own inbox only if the order somehow has no email.
+    reply_to: customerEmail || BAKERY_EMAIL,
+    subject: `${airtableProblem ? '⚠️ NOT IN AIRTABLE — ' : ''}New order: ${m.order_summary || 'Cake'} — $${amountShown}`,
+    html: bakeryEmailHtml
+  }, 'bakery email', timeLeft());
+
+  const customerEmailSend = customerEmail
+    ? sendEmail(RESEND_API_KEY, emailKey('customer'), {
+        from: 'The Old Flour Shop Bakery <orders@theoldflourshop.co.nz>',
+        to: [customerEmail],
+        // orders@theoldflourshop.co.nz can send but can't receive. The
+        // email invites "just reply to this email", so replies go to
+        // theoldflourshop@gmail.com, the inbox that's actually checked.
+        reply_to: 'theoldflourshop@gmail.com',
+        subject: `Your order is confirmed — ${m.order_summary || 'Cake'}`,
+        html: customerEmailHtml
+      }, 'customer email', timeLeft())
+    : (console.error('No customer email found on session — skipped customer confirmation.'), Promise.resolve('failed'));
+
+  // Staff text alert — best-effort; a failure is logged but never
+  // affects the order, and it's never re-sent on a retry.
+  const staffText = (TNZ_AUTH_TOKEN && newOrder)
+    ? sendStaffSms({
+        token: TNZ_AUTH_TOKEN,
+        to: STAFF_SMS_NUMBER,
+        reference: `Cake order ${String(session.id || '').slice(-8)}`,   // same reference as the confirmation page
+        testMode: /^(true|yes|1)$/i.test(process.env.TNZ_TEST_MODE || ''),
+        timeLeft: () => timeLeft(),
+        body: `${airtableProblem ? 'NOT IN AIRTABLE - add by hand. ' : ''}New order: ${m.order_summary || 'Cake'}. ${m.fulfilment === 'delivery' ? `Delivery (${m.suburb || '?'})` : 'Pickup'} ${m.pickup_delivery_date || ''}. ${m.customer_name || ''} ${m.phone || ''}. $${amountShown} paid`
       })
-    });
-    if (!bakeryRes.ok) {
-      console.error('Resend error (bakery email):', await bakeryRes.text());
-      if (!airtableConfigured || airtableProblem) return retryLater('Could not send bakery order email');
-    }
-  } catch (err) {
-    console.error('Failed to send bakery notification email:', err);
-    if (!airtableConfigured || airtableProblem) return retryLater('Could not send bakery order email');
+    : Promise.resolve();
+
+  const [bakeryResult, customerResult] = await Promise.all([bakeryEmail, customerEmailSend, staffText]);
+
+  // Anything temporary that didn't go out: ask Stripe to try again. The
+  // retry finds the order already saved, skips the Airtable step, and
+  // only the email(s) that didn't go out are actually sent.
+  if (bakeryResult === 'retry' || customerResult === 'retry') {
+    return retryLater(`Email not sent yet (bakery: ${bakeryResult}, customer: ${customerResult})`);
+  }
+  // If Resend refused the bakery email for good and it's the only record
+  // (no working Airtable), retrying can't fix it — flag it loudly in the
+  // logs so it's visible in Netlify, but the payment itself is in Stripe.
+  if (bakeryResult === 'failed' && (!airtableConfigured || airtableProblem)) {
+    console.error('IMPORTANT: order not recorded anywhere except Stripe — check the Stripe Dashboard for session', session.id);
   }
 
-  // The order is now safely recorded, so this warm container can skip
-  // any repeat delivery of it without re-sending anything.
+  // Finished — this warm container can skip any repeat of this order.
   processedEventIds.add(session.id);
-
-  if (customerEmail) {
-    try {
-      const customerRes = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: 'The Old Flour Shop Bakery <orders@theoldflourshop.co.nz>',
-          to: [customerEmail],
-          // Same reasoning as above — orders@theoldflourshop.co.nz can
-          // send but can't receive. The email itself explicitly invites
-          // "just reply to this email", so this is what actually makes
-          // that true: a reply now lands in theoldflourshop@gmail.com,
-          // the inbox that's genuinely checked, instead of vanishing.
-          reply_to: 'theoldflourshop@gmail.com',
-          subject: `Your order is confirmed — ${m.order_summary || 'Cake'}`,
-          html: customerEmailHtml
-        })
-      });
-      if (!customerRes.ok) {
-        console.error('Resend error (customer email):', await customerRes.text());
-      }
-    } catch (err) {
-      console.error('Failed to send customer confirmation email:', err);
-    }
-  } else {
-    console.error('No customer email found on session — skipped customer confirmation.');
-  }
-
-  // ── Staff text alert — last, and best-effort ─────────────────────────
-  // Only once the order is safely recorded and both emails have gone.
-  // A failure here is logged but never affects the order.
-  if (TNZ_AUTH_TOKEN) {
-    const how = m.fulfilment === 'delivery' ? `Delivery (${m.suburb || '?'})` : 'Pickup';
-    await sendStaffSms({
-      token: TNZ_AUTH_TOKEN,
-      to: STAFF_SMS_NUMBER,
-      reference: `Cake order ${String(session.id || '').slice(-8)}`,   // same reference as the confirmation page
-      testMode: /^(true|yes|1)$/i.test(process.env.TNZ_TEST_MODE || ''),
-      body: `${airtableProblem ? 'NOT IN AIRTABLE - add by hand. ' : ''}New order: ${m.order_summary || 'Cake'}. ${how} ${m.pickup_delivery_date || ''}. ${m.customer_name || ''} ${m.phone || ''}. $${amount} paid`
-    });
-  }
-
-  // The order record (Airtable, or the bakery email if Airtable isn't set
-  // up) is the one step that makes Stripe retry on failure. The customer
-  // email and staff text are best-effort: a failure is logged, but doesn't
-  // trigger a retry, as that would re-send everything else too.
   return { statusCode: 200, body: 'OK' };
 };

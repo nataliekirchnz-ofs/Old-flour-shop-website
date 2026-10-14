@@ -168,6 +168,7 @@
   .cake-thumb{
     aspect-ratio:4/3;border-radius:4px;overflow:hidden;
   }
+  .cake-thumb picture{display:block;width:100%;height:100%;}
   .cake-thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s ease;}
   .cake-card:hover .cake-thumb img{transform:scale(1.035);}
   .cake-body{padding:0;margin-top:20px;display:flex;flex-direction:column;flex:1;}
@@ -194,7 +195,9 @@
   .foot-grid > div:not(:first-child)::before{content:'';position:absolute;left:0;top:13%;bottom:13%;width:1px;background:var(--line);}
   .foot-badge-group{display:flex;align-items:center;gap:23px;}
   .foot-badge-divider{width:1px;height:74%;align-self:center;background:var(--line);flex-shrink:0;}
-  footer h4{font-family:'Courier Prime',monospace;font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--sage-dark);margin-bottom:12px;}
+  /* Footer headings are h2s (the level after the page's h1, so screen
+     readers don't hear a skipped level), styled exactly as the old h4s were. */
+  footer h2.foot-h{font-family:'Courier Prime',monospace;font-size:12px;font-weight:700;line-height:normal;text-transform:uppercase;letter-spacing:.1em;color:var(--sage-dark);margin:16px 0 12px;}
   footer p, footer a{font-size:14px;color:var(--ink-soft);line-height:1.6;text-decoration:none;}
   .visit-compact p{margin:5px 0;}
   .visit-compact p:first-of-type{margin-top:0;}
@@ -294,6 +297,9 @@
   .docket .dk-row span:last-child{overflow-wrap:anywhere;min-width:0;}
   .docket .dk-row span:last-child{text-align:right;}
   .docket .dk-label{color:var(--ink-soft);}
+  /* Prices stay on one line (the description beside them wraps instead),
+     so "$145.00" can never break into "$145.0" + "0" on narrow phones. */
+  .docket .dk-row span.dk-amt, .docket .dk-total span{white-space:nowrap;overflow-wrap:normal;flex-shrink:0;}
   .docket .dk-sub{margin-top:-4px;padding-left:14px;font-size:11.5px;}
   .docket .dk-line{border-top:1px dashed var(--line);margin:14px 0;}
   .docket .dk-total{display:flex;justify-content:space-between;font-size:15px;font-weight:700;margin-top:auto;padding-top:14px;border-top:1px dashed var(--line);}
@@ -350,7 +356,7 @@
     }
     .logo-full{display:none;}
     .logo-short{display:inline;}
-    .nav > .btn{
+    .nav-actions > .btn{
       font-size:12.5px;
       padding:9px 14px;
       white-space:nowrap;
@@ -432,6 +438,41 @@
       text-align:center;
     }
   }
+  /* Header buttons and the phone/tablet menu */
+  .nav-actions{display:flex;align-items:center;gap:10px;}
+  .menu-btn{display:none;align-items:center;justify-content:center;width:42px;height:42px;padding:0;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--ink);cursor:pointer;}
+  .menu-btn:hover{background:var(--line);}
+  /* Drops down over the page (rather than pushing it down), so opening it
+     never shifts the page or makes the browser re-scroll. */
+  .mobile-menu{position:absolute;top:100%;left:0;right:0;background:rgba(251,246,238,0.98);border-top:1px solid var(--line);border-bottom:1px solid var(--line);box-shadow:0 12px 24px -16px rgba(43,38,32,0.35);padding:6px 28px 10px;}
+  .mobile-menu[hidden]{display:none;}
+  .mobile-menu a{display:block;padding:12px 0;font-size:15px;text-decoration:none;color:var(--ink);border-bottom:1px solid var(--line);}
+  .mobile-menu a:last-child{border-bottom:none;}
+  @media(max-width:860px){ .menu-btn{display:inline-flex;} }
+  @media(max-width:600px){ .mobile-menu{padding:4px 18px 8px;} .menu-btn{width:35px;height:35px;} .nav-actions{gap:8px;} }
+  /* Narrow phones (iPhone SE/mini, many Androids): a touch tighter so the
+     shop name stays on one line next to the two header buttons. */
+  @media(max-width:400px){
+    .nav{padding-left:16px;padding-right:16px;gap:8px;}
+    .logo{font-size:18px;}
+    .nav-actions{gap:6px;}
+    .nav-actions > .btn{padding:9px 12px;}
+  }
+  @media(min-width:861px){ .mobile-menu{display:none !important;} }
+
+  /* Jumping to a section (header links, "See the cake menu", footer
+     links) stops just below the sticky header instead of underneath it,
+     so the section's first line isn't hidden. */
+  section[id]{scroll-margin-top:84px;}
+  @media(max-width:600px){ section[id]{scroll-margin-top:70px;} }
+
+  /* Visitors who've asked their phone or computer to "reduce motion"
+     get no smooth scrolling, photo zoom, button lift or pop-in animation. */
+  @media (prefers-reduced-motion: reduce){
+    html{scroll-behavior:auto;}
+    *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;}
+    .cake-card:hover .cake-thumb img, .btn:hover{transform:none;}
+  }
 </style>
 <!-- The hasMenu/MenuItem block below is a static, crawlable copy of the
      cake menu (name/description/price only, no images) — search engines
@@ -505,13 +546,14 @@
           "@type": "MenuItem",
           "name": "Chocolate Celebration Cake",
           "description": "Layers of dark chocolate sponge and buttercream, finished naked style with a piped message on top — perfect for birthdays.",
-          "offers": { "@type": "Offer", "price": "135", "priceCurrency": "NZD" }
+          "offers": { "@type": "Offer", "price": "145", "priceCurrency": "NZD" }
         },
         {
           "@type": "MenuItem",
-          "name": "Raspberry Cheesecake",
-          "description": "Baked New York-style cheesecake with a deep golden crust, topped with fresh raspberry compote.",
-          "offers": { "@type": "Offer", "price": "125", "priceCurrency": "NZD" }
+          "name": "Vegan Chocolate Cake",
+          "description": "Layers of rich, moist chocolate sponge filled and finished with smooth, creamy vegan chocolate frosting. Deeply chocolatey, beautifully indulgent and entirely plant-based.",
+          "suitableForDiet": "https://schema.org/VeganDiet",
+          "offers": { "@type": "Offer", "price": "160", "priceCurrency": "NZD" }
         },
         {
           "@type": "MenuItem",
@@ -521,21 +563,9 @@
         },
         {
           "@type": "MenuItem",
-          "name": "Tiramisu Cake",
-          "description": "Layers of coffee soaked sponge and creamy mascarpone, finished with a generous dusting of cocoa. Rich, silky and classic.",
-          "offers": { "@type": "Offer", "price": "115", "priceCurrency": "NZD" }
-        },
-        {
-          "@type": "MenuItem",
-          "name": "Lemon Mousse Cake",
-          "description": "Silky lemon mousse layered with bright lemon curd over a delicate crumb base. Fresh, light and beautifully tart.",
-          "offers": { "@type": "Offer", "price": "120", "priceCurrency": "NZD" }
-        },
-        {
-          "@type": "MenuItem",
-          "name": "Orange & Almond Cake",
-          "description": "A beautifully moist orange and almond cake made with whole oranges and ground almonds for a bright, fresh citrus flavour.",
-          "offers": { "@type": "Offer", "price": "120", "priceCurrency": "NZD" }
+          "name": "Raspberry Cheesecake",
+          "description": "Baked New York-style cheesecake with a deep golden crust, topped with fresh raspberry compote.",
+          "offers": { "@type": "Offer", "price": "125", "priceCurrency": "NZD" }
         },
         {
           "@type": "MenuItem",
@@ -545,9 +575,33 @@
         },
         {
           "@type": "MenuItem",
+          "name": "Boysenberry Cheesecake",
+          "description": "Baked New York-style cheesecake with a deep golden crust, topped with fresh boysenberry compote.",
+          "offers": { "@type": "Offer", "price": "125", "priceCurrency": "NZD" }
+        },
+        {
+          "@type": "MenuItem",
+          "name": "Lemon Mousse Cake",
+          "description": "Silky lemon mousse layered with bright lemon curd over a delicate crumb base. Fresh, light and beautifully tart.",
+          "offers": { "@type": "Offer", "price": "120", "priceCurrency": "NZD" }
+        },
+        {
+          "@type": "MenuItem",
           "name": "Lemon Lover Cake",
           "description": "Layered lemon sponge with a bright lemon curd filling, fully frosted in buttercream and finished with fresh zest.",
-          "offers": { "@type": "Offer", "price": "115", "priceCurrency": "NZD" }
+          "offers": { "@type": "Offer", "price": "135", "priceCurrency": "NZD" }
+        },
+        {
+          "@type": "MenuItem",
+          "name": "Key Lime Pie",
+          "description": "Key lime pie with a buttery biscuit crumb crust and a smooth, zesty lime filling. Bright, creamy and perfectly balanced between sweet and tangy.",
+          "offers": { "@type": "Offer", "price": "130", "priceCurrency": "NZD" }
+        },
+        {
+          "@type": "MenuItem",
+          "name": "Tiramisu Cake",
+          "description": "Layers of coffee soaked sponge and creamy mascarpone, finished with a generous dusting of cocoa. Rich, silky and classic.",
+          "offers": { "@type": "Offer", "price": "130", "priceCurrency": "NZD" }
         },
         {
           "@type": "MenuItem",
@@ -557,20 +611,36 @@
         },
         {
           "@type": "MenuItem",
-          "name": "Boysenberry Cheesecake",
-          "description": "Baked New York-style cheesecake with a deep golden crust, topped with fresh boysenberry compote.",
-          "offers": { "@type": "Offer", "price": "125", "priceCurrency": "NZD" }
-        },
-        {
-          "@type": "MenuItem",
-          "name": "Key Lime Pie",
-          "description": "Key lime pie with a buttery biscuit crumb crust and a smooth, zesty lime filling. Bright, creamy and perfectly balanced between sweet and tangy.",
-          "offers": { "@type": "Offer", "price": "130", "priceCurrency": "NZD" }
+          "name": "Orange & Almond Cake",
+          "description": "A beautifully moist orange and almond cake made with whole oranges and ground almonds for a bright, fresh citrus flavour.",
+          "offers": { "@type": "Offer", "price": "120", "priceCurrency": "NZD" }
         }
       ]
     }
   }
 }
+</script>
+<script>
+/* PHOTO SAFETY NET — each cake photo has smaller copies (-640, -960)
+   that phones and laptops use. If one of those is ever missing (e.g. a
+   new cake was added with only the full-size photo), the browser reports
+   an error on that image; this swaps it to the full-size photo instead
+   of showing a broken image. Runs before the page content so it catches
+   every image, and only ever falls back once per image. */
+document.addEventListener('error', function(e){
+  var img = e.target;
+  if(!img || img.tagName !== 'IMG' || !img.getAttribute('srcset') || img.dataset.photoFallback) return;
+  img.dataset.photoFallback = '1';
+  var pic = img.parentElement;
+  if(pic && pic.tagName === 'PICTURE'){
+    Array.prototype.slice.call(pic.querySelectorAll('source')).forEach(function(s){ s.remove(); });
+  }
+  img.removeAttribute('srcset');
+  img.removeAttribute('sizes');
+  var full = img.getAttribute('src');
+  img.src = '';
+  img.src = full;
+}, true);
 </script>
 </head>
 <body>
@@ -581,15 +651,63 @@
       <span class="logo-full">The Old Flour Shop Bakery</span>
       <span class="logo-short">The Old Flour Shop</span>
     </div>
-    <nav class="navlinks">
+    <nav class="navlinks" aria-label="Main">
       <a href="#cakes">Cakes</a>
       <a href="#how">How it works</a>
       <a href="#visit">Visit</a>
     </nav>
-    <button class="btn" id="headerCartBtn" onclick="openOrder()">Order a cake</button>
+    <div class="nav-actions">
+      <button class="btn" id="headerCartBtn" onclick="openOrder()">Order a cake</button>
+      <button type="button" class="menu-btn" id="menuBtn" aria-label="Menu" aria-expanded="false" aria-controls="mobileMenu" onclick="toggleMobileMenu()">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+      </button>
+    </div>
   </div>
+  <!-- Phone/tablet menu: the header links above are hidden on smaller
+       screens, so the menu button opens this list instead. -->
+  <nav class="mobile-menu" id="mobileMenu" aria-label="Main menu" hidden>
+    <a href="#cakes">Cakes</a>
+    <a href="#how">How it works</a>
+    <a href="#visit">Visit us</a>
+  </nav>
 </header>
+<script>
+/* Phone/tablet menu. Opens and closes from the menu button; closes again
+   when a section is picked, on Escape, when tapping anywhere else, or if
+   the screen gets wide enough to show the normal header links. */
+function toggleMobileMenu(open){
+  var menu = document.getElementById('mobileMenu'), btn = document.getElementById('menuBtn');
+  if(!menu || !btn) return;
+  if(typeof open !== 'boolean') open = menu.hidden;
+  menu.hidden = !open;
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  btn.setAttribute('aria-label', open ? 'Close menu' : 'Menu');
+}
+document.addEventListener('click', function(e){
+  var menu = document.getElementById('mobileMenu');
+  if(!menu || menu.hidden) return;
+  if(e.target.closest('#mobileMenu a')) { toggleMobileMenu(false); return; }
+  if(!e.target.closest('#mobileMenu') && !e.target.closest('#menuBtn')) toggleMobileMenu(false);
+});
+document.addEventListener('keydown', function(e){
+  var menu = document.getElementById('mobileMenu');
+  if(e.key === 'Escape' && menu && !menu.hidden){ toggleMobileMenu(false); document.getElementById('menuBtn').focus(); }
+});
+window.addEventListener('resize', function(){ if(window.innerWidth > 860) toggleMobileMenu(false); });
+// If the visitor starts scrolling the page (a swipe, mouse wheel or
+// trackpad) instead of picking a section, close the menu so it doesn't sit
+// over the content. Only the visitor's own scrolling counts, so the
+// page's smooth scroll after picking a section never closes it by mistake.
+function closeMenuOnUserScroll(e){
+  var menu = document.getElementById('mobileMenu');
+  if(!menu || menu.hidden || (e.target.closest && e.target.closest('#mobileMenu'))) return;
+  toggleMobileMenu(false);
+}
+window.addEventListener('wheel', closeMenuOnUserScroll, {passive:true});
+window.addEventListener('touchmove', closeMenuOnUserScroll, {passive:true});
+</script>
 
+<main>
 <div class="strip">
   <div class="wrap">Cake orders require at least 48 hours' notice.</div>
 </div>
@@ -621,24 +739,52 @@
       <div>
         <p class="eyebrow">The menu</p>
         <h2 style="margin-top:8px;">Cakes worth planning ahead for</h2>
-        <p style="color:var(--ink-soft);font-size:12.5px;opacity:0.8;margin-top:4px;">All whole cakes serve approximately 10–14.</p>
+        <p style="color:var(--ink-soft);font-size:12.5px;opacity:0.8;margin-top:4px;">All whole cakes serve approximately 10–14. Prices in New Zealand dollars (NZD).</p>
       </div>
     </div>
     <div class="cakegrid" id="cakeGrid">
     <div class="cake-card">
-      <div class="cake-thumb"><img src="images/chocolate-cake.webp" alt="Chocolate Celebration Cake" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-thumb"><picture><source media="(max-width: 860px)" srcset="images/chocolate-cake-640.webp 640w, images/chocolate-cake-960.webp 960w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px"><img src="images/chocolate-cake.webp" srcset="images/chocolate-cake-640.webp 640w, images/chocolate-cake-960.webp 960w, images/chocolate-cake.webp 1200w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px" alt="Chocolate Celebration Cake" width="1200" height="900" loading="lazy" decoding="async"></picture></div>
       <div class="cake-body">
         <h3>Chocolate Celebration Cake</h3>
         <div class="cake-tags"><span class="tag">House favourite</span><span class="tag">Custom Message Available</span></div>
         <p class="desc" style="flex:none;">Layers of dark chocolate sponge and buttercream, finished naked style with a piped message on top — perfect for birthdays.</p>
         <div class="cake-foot">
-          <div class="price-from">$135.00</div>
+          <div class="price-from">$145.00 <span>NZD</span></div>
           <button class="btn btn-ghost" onclick="addCakeFromGrid('chocolate-cake')">Add to cart</button>
         </div>
       </div>
     </div>
     <div class="cake-card">
-      <div class="cake-thumb"><img src="images/raspberry-cheesecake.webp" alt="Raspberry Cheesecake" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-thumb"><picture><source media="(max-width: 860px)" srcset="images/vegan-chocolate-cake-640.webp 640w, images/vegan-chocolate-cake-960.webp 960w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px"><img src="images/vegan-chocolate-cake.webp" srcset="images/vegan-chocolate-cake-640.webp 640w, images/vegan-chocolate-cake-960.webp 960w, images/vegan-chocolate-cake.webp 1200w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px" alt="Vegan Chocolate Cake" width="1200" height="900" loading="lazy" decoding="async"></picture></div>
+      <div class="cake-body">
+        <h3>Vegan Chocolate Cake</h3>
+        <div class="cake-tags"><span class="tag">Vegan</span><span class="tag">No Added Gluten Option</span><span class="tag">Custom Message Available</span></div>
+        <p class="desc" style="flex:none;">Layers of rich, moist chocolate sponge filled and finished with smooth, creamy vegan chocolate frosting. Deeply chocolatey, beautifully indulgent and entirely plant-based.</p>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin:8px 0 0;">
+           <input type="checkbox" id="cardGf-vegan-chocolate-cake">
+           Prepare without added gluten (+$7.50)
+         </label>
+        <div class="cake-foot">
+          <div class="price-from">$160.00 <span>NZD</span></div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('vegan-chocolate-cake')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><picture><source media="(max-width: 860px)" srcset="images/chocolate-marquise-640.webp 640w, images/chocolate-marquise-960.webp 960w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px"><img src="images/chocolate-marquise.webp" srcset="images/chocolate-marquise-640.webp 640w, images/chocolate-marquise-960.webp 960w, images/chocolate-marquise.webp 1200w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px" alt="Chocolate Marquise" width="1200" height="900" loading="lazy" decoding="async"></picture></div>
+      <div class="cake-body">
+        <h3>Chocolate Marquise</h3>
+        <div class="cake-tags"><span class="tag">Bestseller</span><span class="tag">Made Without Added Gluten</span></div>
+        <p class="desc" style="flex:none;">Rich chocolate marquise topped with soft caramel and a crown of torched meringue. Deeply chocolatey and indulgent.</p>
+        <div class="cake-foot">
+          <div class="price-from">$130.00 <span>NZD</span></div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('chocolate-marquise')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><picture><source media="(max-width: 860px)" srcset="images/raspberry-cheesecake-640.webp 640w, images/raspberry-cheesecake-960.webp 960w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px"><img src="images/raspberry-cheesecake.webp" srcset="images/raspberry-cheesecake-640.webp 640w, images/raspberry-cheesecake-960.webp 960w, images/raspberry-cheesecake.webp 1200w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px" alt="Raspberry Cheesecake" width="1200" height="900" loading="lazy" decoding="async"></picture></div>
       <div class="cake-body">
         <h3>Raspberry Cheesecake</h3>
         <div class="cake-tags"><span class="tag">No Added Gluten Option</span></div>
@@ -648,89 +794,13 @@
            Prepare without added gluten (+$7.50)
          </label>
         <div class="cake-foot">
-          <div class="price-from">$125.00</div>
+          <div class="price-from">$125.00 <span>NZD</span></div>
           <button class="btn btn-ghost" onclick="addCakeFromGrid('raspberry-cheesecake')">Add to cart</button>
         </div>
       </div>
     </div>
     <div class="cake-card">
-      <div class="cake-thumb"><img src="images/chocolate-marquise.webp" alt="Chocolate Marquise" width="1200" height="900" loading="lazy"></div>
-      <div class="cake-body">
-        <h3>Chocolate Marquise</h3>
-        <div class="cake-tags"><span class="tag">Bestseller</span><span class="tag">Made Without Added Gluten</span></div>
-        <p class="desc" style="flex:none;">Rich chocolate marquise topped with soft caramel and a crown of torched meringue. Deeply chocolatey and indulgent.</p>
-        <div class="cake-foot">
-          <div class="price-from">$130.00</div>
-          <button class="btn btn-ghost" onclick="addCakeFromGrid('chocolate-marquise')">Add to cart</button>
-        </div>
-      </div>
-    </div>
-    <div class="cake-card">
-      <div class="cake-thumb"><img src="images/tiramisu-cake.webp" alt="Tiramisu Cake" width="1200" height="900" loading="lazy"></div>
-      <div class="cake-body">
-        <h3>Tiramisu Cake</h3>
-        <div class="cake-tags"><span class="tag">Coffee</span><span class="tag">House favourite</span></div>
-        <p class="desc" style="flex:none;">Layers of coffee soaked sponge and creamy mascarpone, finished with a generous dusting of cocoa. Rich, silky and classic.</p>
-        <div class="cake-foot">
-          <div class="price-from">$115.00</div>
-          <button class="btn btn-ghost" onclick="addCakeFromGrid('tiramisu-cake')">Add to cart</button>
-        </div>
-      </div>
-    </div>
-    <div class="cake-card">
-      <div class="cake-thumb"><img src="images/lemon-velvet.webp" alt="Lemon Mousse Cake" width="1200" height="900" loading="lazy"></div>
-      <div class="cake-body">
-        <h3>Lemon Mousse Cake</h3>
-        <div class="cake-tags"><span class="tag">No Added Gluten Option</span></div>
-        <p class="desc" style="flex:none;">Silky lemon mousse layered with bright lemon curd over a delicate crumb base. Fresh, light and beautifully tart.</p>
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin:8px 0 0;">
-           <input type="checkbox" id="cardGf-lemon-velvet">
-           Prepare without added gluten (+$7.50)
-         </label>
-        <div class="cake-foot">
-          <div class="price-from">$120.00</div>
-          <button class="btn btn-ghost" onclick="addCakeFromGrid('lemon-velvet')">Add to cart</button>
-        </div>
-      </div>
-    </div>
-    <div class="cake-card">
-      <div class="cake-thumb"><img src="images/orange-almond.webp" alt="Orange & Almond Cake" width="1200" height="900" loading="lazy"></div>
-      <div class="cake-body">
-        <h3>Orange & Almond Cake</h3>
-        <div class="cake-tags"><span class="tag">Made Without Added Gluten</span><span class="tag">Contains Nuts</span></div>
-        <p class="desc" style="flex:none;">A beautifully moist orange and almond cake made with whole oranges and ground almonds for a bright, fresh citrus flavour.</p>
-        <div class="cake-foot">
-          <div class="price-from">$120.00</div>
-          <button class="btn btn-ghost" onclick="addCakeFromGrid('orange-almond')">Add to cart</button>
-        </div>
-      </div>
-    </div>
-    <div class="cake-card">
-      <div class="cake-thumb"><img src="images/lemon-lover-cake.webp" alt="Lemon Lover Cake" width="1200" height="900" loading="lazy"></div>
-      <div class="cake-body">
-        <h3>Lemon Lover Cake</h3>
-        <div class="cake-tags"><span class="tag">Custom Message Available</span></div>
-        <p class="desc" style="flex:none;">Layered lemon sponge with a bright lemon curd filling, fully frosted in buttercream and finished with fresh zest.</p>
-        <div class="cake-foot">
-          <div class="price-from">$115.00</div>
-          <button class="btn btn-ghost" onclick="addCakeFromGrid('lemon-lover-cake')">Add to cart</button>
-        </div>
-      </div>
-    </div>
-    <div class="cake-card">
-      <div class="cake-thumb"><img src="images/raspberry-crumble.webp" alt="Raspberry Crumble Cake" width="1200" height="900" loading="lazy"></div>
-      <div class="cake-body">
-        <h3>Raspberry Crumble Cake</h3>
-        <div class="cake-tags"><span class="tag">House favourite</span></div>
-        <p class="desc" style="flex:none;">Buttery vanilla sponge studded with fresh raspberries under a golden brown sugar crumble.</p>
-        <div class="cake-foot">
-          <div class="price-from">$100.00</div>
-          <button class="btn btn-ghost" onclick="addCakeFromGrid('raspberry-crumble')">Add to cart</button>
-        </div>
-      </div>
-    </div>
-    <div class="cake-card">
-      <div class="cake-thumb"><img src="images/passionfruit-cheesecake.webp" alt="Passionfruit Cheesecake" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-thumb"><picture><source media="(max-width: 860px)" srcset="images/passionfruit-cheesecake-640.webp 640w, images/passionfruit-cheesecake-960.webp 960w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px"><img src="images/passionfruit-cheesecake.webp" srcset="images/passionfruit-cheesecake-640.webp 640w, images/passionfruit-cheesecake-960.webp 960w, images/passionfruit-cheesecake.webp 1200w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px" alt="Passionfruit Cheesecake" width="1200" height="900" loading="lazy" decoding="async"></picture></div>
       <div class="cake-body">
         <h3>Passionfruit Cheesecake</h3>
         <div class="cake-tags"><span class="tag">Bestseller</span><span class="tag">No Added Gluten Option</span></div>
@@ -740,13 +810,13 @@
            Prepare without added gluten (+$7.50)
          </label>
         <div class="cake-foot">
-          <div class="price-from">$125.00</div>
+          <div class="price-from">$125.00 <span>NZD</span></div>
           <button class="btn btn-ghost" onclick="addCakeFromGrid('passionfruit-cheesecake')">Add to cart</button>
         </div>
       </div>
     </div>
     <div class="cake-card">
-      <div class="cake-thumb"><img src="images/boysenberry-cheesecake.webp" alt="Boysenberry Cheesecake" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-thumb"><picture><source media="(max-width: 860px)" srcset="images/boysenberry-cheesecake-640.webp 640w, images/boysenberry-cheesecake-960.webp 960w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px"><img src="images/boysenberry-cheesecake.webp" srcset="images/boysenberry-cheesecake-640.webp 640w, images/boysenberry-cheesecake-960.webp 960w, images/boysenberry-cheesecake.webp 1200w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px" alt="Boysenberry Cheesecake" width="1200" height="900" loading="lazy" decoding="async"></picture></div>
       <div class="cake-body">
         <h3>Boysenberry Cheesecake</h3>
         <div class="cake-tags"><span class="tag">No Added Gluten Option</span></div>
@@ -756,13 +826,41 @@
            Prepare without added gluten (+$7.50)
          </label>
         <div class="cake-foot">
-          <div class="price-from">$125.00</div>
+          <div class="price-from">$125.00 <span>NZD</span></div>
           <button class="btn btn-ghost" onclick="addCakeFromGrid('boysenberry-cheesecake')">Add to cart</button>
         </div>
       </div>
     </div>
     <div class="cake-card">
-      <div class="cake-thumb"><img src="images/key-lime-pie.webp" alt="Key Lime Pie" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-thumb"><picture><source media="(max-width: 860px)" srcset="images/lemon-velvet-640.webp 640w, images/lemon-velvet-960.webp 960w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px"><img src="images/lemon-velvet.webp" srcset="images/lemon-velvet-640.webp 640w, images/lemon-velvet-960.webp 960w, images/lemon-velvet.webp 1200w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px" alt="Lemon Mousse Cake" width="1200" height="900" loading="lazy" decoding="async"></picture></div>
+      <div class="cake-body">
+        <h3>Lemon Mousse Cake</h3>
+        <div class="cake-tags"><span class="tag">No Added Gluten Option</span></div>
+        <p class="desc" style="flex:none;">Silky lemon mousse layered with bright lemon curd over a delicate crumb base. Fresh, light and beautifully tart.</p>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-soft);margin:8px 0 0;">
+           <input type="checkbox" id="cardGf-lemon-velvet">
+           Prepare without added gluten (+$7.50)
+         </label>
+        <div class="cake-foot">
+          <div class="price-from">$120.00 <span>NZD</span></div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('lemon-velvet')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><picture><source media="(max-width: 860px)" srcset="images/lemon-lover-cake-640.webp 640w, images/lemon-lover-cake-960.webp 960w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px"><img src="images/lemon-lover-cake.webp" srcset="images/lemon-lover-cake-640.webp 640w, images/lemon-lover-cake-960.webp 960w, images/lemon-lover-cake.webp 1200w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px" alt="Lemon Lover Cake" width="1200" height="900" loading="lazy" decoding="async"></picture></div>
+      <div class="cake-body">
+        <h3>Lemon Lover Cake</h3>
+        <div class="cake-tags"><span class="tag">Custom Message Available</span></div>
+        <p class="desc" style="flex:none;">Layered lemon sponge with a bright lemon curd filling, fully frosted in buttercream and finished with fresh zest.</p>
+        <div class="cake-foot">
+          <div class="price-from">$135.00 <span>NZD</span></div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('lemon-lover-cake')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><picture><source media="(max-width: 860px)" srcset="images/key-lime-pie-640.webp 640w, images/key-lime-pie-960.webp 960w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px"><img src="images/key-lime-pie.webp" srcset="images/key-lime-pie-640.webp 640w, images/key-lime-pie-960.webp 960w, images/key-lime-pie.webp 1200w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px" alt="Key Lime Pie" width="1200" height="900" loading="lazy" decoding="async"></picture></div>
       <div class="cake-body">
         <h3>Key Lime Pie</h3>
         <div class="cake-tags"><span class="tag">No Added Gluten Option</span></div>
@@ -772,8 +870,44 @@
            Prepare without added gluten (+$7.50)
          </label>
         <div class="cake-foot">
-          <div class="price-from">$130.00</div>
+          <div class="price-from">$130.00 <span>NZD</span></div>
           <button class="btn btn-ghost" onclick="addCakeFromGrid('key-lime-pie')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><picture><source media="(max-width: 860px)" srcset="images/tiramisu-cake-640.webp 640w, images/tiramisu-cake-960.webp 960w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px"><img src="images/tiramisu-cake.webp" srcset="images/tiramisu-cake-640.webp 640w, images/tiramisu-cake-960.webp 960w, images/tiramisu-cake.webp 1200w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px" alt="Tiramisu Cake" width="1200" height="900" loading="lazy" decoding="async"></picture></div>
+      <div class="cake-body">
+        <h3>Tiramisu Cake</h3>
+        <div class="cake-tags"><span class="tag">Coffee</span><span class="tag">House favourite</span></div>
+        <p class="desc" style="flex:none;">Layers of coffee soaked sponge and creamy mascarpone, finished with a generous dusting of cocoa. Rich, silky and classic.</p>
+        <div class="cake-foot">
+          <div class="price-from">$130.00 <span>NZD</span></div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('tiramisu-cake')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><picture><source media="(max-width: 860px)" srcset="images/raspberry-crumble-640.webp 640w, images/raspberry-crumble-960.webp 960w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px"><img src="images/raspberry-crumble.webp" srcset="images/raspberry-crumble-640.webp 640w, images/raspberry-crumble-960.webp 960w, images/raspberry-crumble.webp 1200w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px" alt="Raspberry Crumble Cake" width="1200" height="900" loading="lazy" decoding="async"></picture></div>
+      <div class="cake-body">
+        <h3>Raspberry Crumble Cake</h3>
+        <div class="cake-tags"><span class="tag">House favourite</span></div>
+        <p class="desc" style="flex:none;">Buttery vanilla sponge studded with fresh raspberries under a golden brown sugar crumble.</p>
+        <div class="cake-foot">
+          <div class="price-from">$100.00 <span>NZD</span></div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('raspberry-crumble')">Add to cart</button>
+        </div>
+      </div>
+    </div>
+    <div class="cake-card">
+      <div class="cake-thumb"><picture><source media="(max-width: 860px)" srcset="images/orange-almond-640.webp 640w, images/orange-almond-960.webp 960w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px"><img src="images/orange-almond.webp" srcset="images/orange-almond-640.webp 640w, images/orange-almond-960.webp 960w, images/orange-almond.webp 1200w" sizes="(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px" alt="Orange & Almond Cake" width="1200" height="900" loading="lazy" decoding="async"></picture></div>
+      <div class="cake-body">
+        <h3>Orange & Almond Cake</h3>
+        <div class="cake-tags"><span class="tag">Made Without Added Gluten</span><span class="tag">Contains Nuts</span></div>
+        <p class="desc" style="flex:none;">A beautifully moist orange and almond cake made with whole oranges and ground almonds for a bright, fresh citrus flavour.</p>
+        <div class="cake-foot">
+          <div class="price-from">$120.00 <span>NZD</span></div>
+          <button class="btn btn-ghost" onclick="addCakeFromGrid('orange-almond')">Add to cart</button>
         </div>
       </div>
     </div>
@@ -809,7 +943,7 @@
 <section id="visit" class="sec-visit" style="background:var(--cream-2);">
   <div class="wrap" style="display:grid;grid-template-columns:1fr 1fr;gap:43px;align-items:center;">
     <div style="border-radius:6px;overflow:hidden;aspect-ratio:1/1;">
-      <img id="visitImg" src="images/visitImg.webp" width="1000" height="1000" style="width:100%;height:100%;object-fit:cover;display:block;" alt="The Old Flour Shop Bakery entrance with Open sign">
+      <img id="visitImg" src="images/visitImg.webp" width="1000" height="1000" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block;" alt="The Old Flour Shop Bakery entrance with Open sign">
     </div>
     <div style="position:relative;">
       <p class="eyebrow">Find Us</p>
@@ -835,6 +969,7 @@
     </div>
   </div>
 </section>
+</main>
 
 <footer>
   <div class="wrap">
@@ -850,13 +985,13 @@
         </div>
       </div>
       <div>
-        <h4>Shop</h4>
+        <h2 class="foot-h">Shop</h2>
         <p><a href="#cakes">Cake menu</a></p>
         <p><a href="#how">How ordering works</a></p>
         <p><a href="#visit">Find us</a></p>
       </div>
       <div class="visit-compact">
-        <h4>Visit</h4>
+        <h2 class="foot-h">Visit</h2>
         <p>114 Ocean View Road</p>
         <p>7:30am – 3pm</p>
         <p><a href="tel:+64273399264">027 339 9264</a></p>
@@ -922,7 +1057,7 @@
           <label class="field" for="suburb">Suburb / area</label>
           <select id="suburb" onchange="updateDocket(); refreshNext(); saveDraft();"></select>
           <label class="field" for="address">Delivery address</label>
-          <input type="text" id="address" placeholder="123 Ocean View Rd, Oneroa" autocomplete="street-address" maxlength="300">
+          <input type="text" id="address" placeholder="123 Ocean View Rd, Oneroa" autocomplete="address-line1" maxlength="300">
         </div>
         <div class="cutoff-note" id="cutoffNote" style="display:none;"></div>
         <label class="field" for="orderDate">Date</label>
@@ -949,6 +1084,7 @@
         <h3>Review &amp; pay</h3>
         <p class="sub">Step 4 of 4 — secure payment via Stripe</p>
         <p style="font-size:14px;color:var(--ink-soft);line-height:1.6;margin-bottom:14px;">Check your order in the docket, then continue to pay securely. You'll enter your card details on Stripe's own secure payment page — we never see or store your card information.</p>
+        <p id="payNote" class="cutoff-note" style="display:none;"></p>
         <p id="payError" style="display:none;font-size:13px;color:#8C3B2E;background:#FBEAE8;border:1px solid #E9B9B2;border-radius:4px;padding:10px 12px;margin-bottom:14px;"></p>
       </div>
 
@@ -974,7 +1110,7 @@
         <div class="dk-empty">Your order will appear here as you go.</div>
       </div>
       <div class="dk-total" id="docketTotal" style="display:none;">
-        <span>TOTAL</span><span id="docketTotalVal">$0.00</span>
+        <span>TOTAL (NZD)</span><span id="docketTotalVal">$0.00</span>
       </div>
     </div>
   </div>
@@ -996,6 +1132,7 @@
 */
 const CAKE_PHOTOS = {
   "chocolate-cake": "images/chocolate-cake.webp",
+  "vegan-chocolate-cake": "images/vegan-chocolate-cake.webp",
   "lemon-lover-cake": "images/lemon-lover-cake.webp",
   "chocolate-marquise": "images/chocolate-marquise.webp",
   "tiramisu-cake": "images/tiramisu-cake.webp",
@@ -1024,16 +1161,16 @@ const CAKES = [
     name:'Chocolate Celebration Cake',
     tags:['House favourite','Custom Message Available'],
     desc:'Layers of dark chocolate sponge and buttercream, finished naked style with a piped message on top — perfect for birthdays.',
-    price:135,
+    price:145,
     photo:'chocolate-cake'
   },
   {
-    id:'raspberry-cheesecake',
-    name:'Raspberry Cheesecake',
-    tags:['No Added Gluten Option'],
-    desc:'Baked New York-style cheesecake with a deep golden crust, topped with fresh raspberry compote.',
-    price:125,
-    photo:'raspberry-cheesecake'
+    id:'vegan-chocolate-cake',
+    name:'Vegan Chocolate Cake',
+    tags:['Vegan','No Added Gluten Option','Custom Message Available'],
+    desc:'Layers of rich, moist chocolate sponge filled and finished with smooth, creamy vegan chocolate frosting. Deeply chocolatey, beautifully indulgent and entirely plant-based.',
+    price:160,
+    photo:'vegan-chocolate-cake'
   },
   {
     id:'chocolate-marquise',
@@ -1044,44 +1181,12 @@ const CAKES = [
     photo:'chocolate-marquise'
   },
   {
-    id:'tiramisu-cake',
-    name:'Tiramisu Cake',
-    tags:['Coffee','House favourite'],
-    desc:'Layers of coffee soaked sponge and creamy mascarpone, finished with a generous dusting of cocoa. Rich, silky and classic.',
-    price:115,
-    photo:'tiramisu-cake'
-  },
-  {
-    id:'lemon-velvet',
-    name:'Lemon Mousse Cake',
+    id:'raspberry-cheesecake',
+    name:'Raspberry Cheesecake',
     tags:['No Added Gluten Option'],
-    desc:'Silky lemon mousse layered with bright lemon curd over a delicate crumb base. Fresh, light and beautifully tart.',
-    price:120,
-    photo:'lemon-velvet'
-  },
-  {
-    id:'orange-almond',
-    name:'Orange & Almond Cake',
-    tags:['Made Without Added Gluten','Contains Nuts'],
-    desc:'A beautifully moist orange and almond cake made with whole oranges and ground almonds for a bright, fresh citrus flavour.',
-    price:120,
-    photo:'orange-almond'
-  },
-  {
-    id:'lemon-lover-cake',
-    name:'Lemon Lover Cake',
-    tags:['Custom Message Available'],
-    desc:'Layered lemon sponge with a bright lemon curd filling, fully frosted in buttercream and finished with fresh zest.',
-    price:115,
-    photo:'lemon-lover-cake'
-  },
-  {
-    id:'raspberry-crumble',
-    name:'Raspberry Crumble Cake',
-    tags:['House favourite'],
-    desc:'Buttery vanilla sponge studded with fresh raspberries under a golden brown sugar crumble.',
-    price:100,
-    photo:'raspberry-crumble'
+    desc:'Baked New York-style cheesecake with a deep golden crust, topped with fresh raspberry compote.',
+    price:125,
+    photo:'raspberry-cheesecake'
   },
   {
     id:'passionfruit-cheesecake',
@@ -1100,12 +1205,52 @@ const CAKES = [
     photo:'boysenberry-cheesecake'
   },
   {
+    id:'lemon-velvet',
+    name:'Lemon Mousse Cake',
+    tags:['No Added Gluten Option'],
+    desc:'Silky lemon mousse layered with bright lemon curd over a delicate crumb base. Fresh, light and beautifully tart.',
+    price:120,
+    photo:'lemon-velvet'
+  },
+  {
+    id:'lemon-lover-cake',
+    name:'Lemon Lover Cake',
+    tags:['Custom Message Available'],
+    desc:'Layered lemon sponge with a bright lemon curd filling, fully frosted in buttercream and finished with fresh zest.',
+    price:135,
+    photo:'lemon-lover-cake'
+  },
+  {
     id:'key-lime-pie',
     name:'Key Lime Pie',
     tags:['No Added Gluten Option'],
     desc:'Key lime pie with a buttery biscuit crumb crust and a smooth, zesty lime filling. Bright, creamy and perfectly balanced between sweet and tangy.',
     price:130,
     photo:'key-lime-pie'
+  },
+  {
+    id:'tiramisu-cake',
+    name:'Tiramisu Cake',
+    tags:['Coffee','House favourite'],
+    desc:'Layers of coffee soaked sponge and creamy mascarpone, finished with a generous dusting of cocoa. Rich, silky and classic.',
+    price:130,
+    photo:'tiramisu-cake'
+  },
+  {
+    id:'raspberry-crumble',
+    name:'Raspberry Crumble Cake',
+    tags:['House favourite'],
+    desc:'Buttery vanilla sponge studded with fresh raspberries under a golden brown sugar crumble.',
+    price:100,
+    photo:'raspberry-crumble'
+  },
+  {
+    id:'orange-almond',
+    name:'Orange & Almond Cake',
+    tags:['Made Without Added Gluten','Contains Nuts'],
+    desc:'A beautifully moist orange and almond cake made with whole oranges and ground almonds for a bright, fresh citrus flavour.',
+    price:120,
+    photo:'orange-almond'
   },
 ];
 const DELIVERY_ZONES = [
@@ -1114,6 +1259,10 @@ const DELIVERY_ZONES = [
   { fee:25, suburbs:['Mudbrick Vineyard','Cable Bay Vineyard','Wild on Waiheke','Stoneyridge Vineyard','Te Motu Estate','Tantalus Estate','Onetangi'] },
 ];
 const CUTOFF_HOURS = 48;
+// Stripe's payment page expires after this many minutes, and the chosen
+// date has to still be valid when it does (see create-checkout-session.js).
+// Must match CHECKOUT_WINDOW_MINUTES there.
+const CHECKOUT_WINDOW_MINUTES = 35;
 const MAX_BOOKING_MONTHS_AHEAD = 6; // must match MAX_BOOKING_MONTHS_AHEAD in create-checkout-session.js
 const MAX_ITEM_QTY_CLIENT = 20; // must match MAX_ITEM_QTY in create-checkout-session.js — the backend is authoritative, this is just for immediate UI feedback
 const GF_SURCHARGE = 7.50; // per-cake charge for the no-added-gluten variant — must match GF_SURCHARGE in create-checkout-session.js, which is the authoritative source for what's actually charged
@@ -1130,13 +1279,31 @@ const CARD_SURCHARGE_RATE = 0.018; // 1.8% card surcharge, applied to (cakes + d
 const BLACKOUT_DATES = ['2026-12-25', '2027-01-01'];
 /* ============================================================ */
 
-function fmt(n){return '$' + n.toFixed(2);}
+// Money for display: always 2 decimals, with thousands separators
+// ($1,740.00) to match Stripe's payment page and the emails.
+function fmt(n){return '$' + Number(n).toFixed(2).replace(/^(\d+)/, d => d.replace(/\B(?=(\d{3})+$)/g, ','));}
 
 function cakePhotoSrc(key){
   return (typeof CAKE_PHOTOS !== 'undefined' && CAKE_PHOTOS[key]) ? CAKE_PHOTOS[key] : '';
 }
+// Each cake photo also exists in two smaller copies next to the original,
+// e.g. images/key-lime-pie-640.webp and images/key-lime-pie-960.webp. The
+// browser picks the smallest one that's still sharp on the visitor's
+// screen, so phones and laptops don't download the full 1200px photo
+// when a smaller one looks identical. IF YOU ADD OR REPLACE A CAKE PHOTO,
+// make the -640 and -960 copies too (README explains how).
+const CAKE_IMG_SIZES = '(max-width: 600px) calc(100vw - 36px), (max-width: 860px) calc(50vw - 44px), 336px';
+// On phones and tablets (phoneSizes = true) the list stops at the 960px
+// copy: high-density phone screens would otherwise pick the full 1200px
+// photo, and at card size the two look the same.
+function cakePhotoSrcset(key, phoneSizes){
+  const full = cakePhotoSrc(key);
+  if(!full) return '';
+  const base = full.replace(/\.webp$/, '');
+  return `${base}-640.webp 640w, ${base}-960.webp 960w` + (phoneSizes ? '' : `, ${full} 1200w`);
+}
 
-// The #cakeGrid div already contains real, static HTML for all 11 cakes
+// The #cakeGrid div already contains real, static HTML for all 12 cakes
 // directly in the page source (see index.html) — so search engines and
 // any non-JS crawler see genuine cake names/descriptions/prices
 // immediately, without needing to run this function at all. This
@@ -1158,14 +1325,14 @@ function buildCakeGrid(){
       : '';
     return `
     <div class="cake-card">
-      <div class="cake-thumb"><img src="${cakePhotoSrc(c.photo)}" alt="${c.name}" width="1200" height="900" loading="lazy"></div>
+      <div class="cake-thumb"><picture><source media="(max-width: 860px)" srcset="${cakePhotoSrcset(c.photo, true)}" sizes="${CAKE_IMG_SIZES}"><img src="${cakePhotoSrc(c.photo)}" srcset="${cakePhotoSrcset(c.photo)}" sizes="${CAKE_IMG_SIZES}" alt="${c.name}" width="1200" height="900" loading="lazy" decoding="async"></picture></div>
       <div class="cake-body">
         <h3>${c.name}</h3>
         <div class="cake-tags">${c.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
         <p class="desc" style="flex:none;">${c.desc}</p>
         ${gfRow}
         <div class="cake-foot">
-          <div class="price-from">${fmt(c.price)}</div>
+          <div class="price-from">${fmt(c.price)} <span>NZD</span></div>
           <button class="btn btn-ghost" onclick="addCakeFromGrid('${c.id}')">Add to cart</button>
         </div>
       </div>
@@ -1183,7 +1350,6 @@ buildCakeGrid();
    as WebP files rather than embedded base64 — same note as above. */
 document.getElementById('heroBadge').src = 'images/heroBadge.webp';
 document.getElementById('footerBadge').src = document.getElementById('heroBadge').src;
-document.getElementById('visitImg').src = 'images/visitImg.webp';
 
 /* -------- order flow state -------- */
 let cart = []; // [{cakeId, qty, glutenFree, messages}] — messages: one per cake, only for cakes that take a piped message
@@ -1247,7 +1413,7 @@ function minOrderDate(){
   // 48 hours' notice — so when the cutoff doesn't land exactly on
   // midnight, the minimum bookable day rolls forward to the next one.
   const now = nzNowAsUTC();
-  const cutoff = new Date(now.getTime() + CUTOFF_HOURS * 3600 * 1000);
+  const cutoff = new Date(now.getTime() + CUTOFF_HOURS * 3600 * 1000 + CHECKOUT_WINDOW_MINUTES * 60 * 1000);
   const atMidnight = cutoff.getUTCHours()===0 && cutoff.getUTCMinutes()===0 && cutoff.getUTCSeconds()===0;
   let minDate = new Date(Date.UTC(cutoff.getUTCFullYear(), cutoff.getUTCMonth(), cutoff.getUTCDate(), 0, 0, 0));
   if(!atMidnight){ minDate = new Date(minDate.getTime() + 24*3600*1000); }
@@ -1523,7 +1689,7 @@ function renderCartStep(){
     const unitPrice = c.price + (item.glutenFree ? GF_SURCHARGE : 0);
     return `
       <div class="cart-item">
-        <img src="${cakePhotoSrc(c.photo)}" alt="${c.name}">
+        <img src="${cakePhotoSrc(c.photo)}" srcset="${cakePhotoSrcset(c.photo)}" sizes="48px" alt="${c.name}">
         <div class="cart-item-info">
           <div class="cart-item-name">${c.name}${variantSuffix}</div>
           <div class="cart-item-price">${fmt(unitPrice)} each</div>
@@ -1616,6 +1782,7 @@ function getFocusableInModal(){
 }
 
 function openOrder(cakeId, glutenFree){
+  const wasOpen = document.getElementById('overlay').classList.contains('open');
   // Restores the entire in-progress order — not just the cart — if one
   // was left mid-flow, whether that's from an ordinary refresh, a
   // cancelled Stripe payment, or simply closing the modal partway
@@ -1686,8 +1853,83 @@ function openOrder(cakeId, glutenFree){
     document.querySelector('.modal').focus();
   });
   saveDraft(); // ensures a draft now exists reflecting the current (possibly freshly-restored) state
+  const payNote = document.getElementById('payNote');
+  if(payNote) payNote.style.display = 'none';
+  // One browser-history entry for the open form (and one more per step,
+  // added in nextStep), so the phone's Back button steps back through the
+  // form and then closes it, rather than leaving the website.
+  if(!wasOpen) pushOrderStep(1);
 }
+
+// ---------------------------------------------------------------------
+// BACK BUTTON
+// Each step of the order form has its own browser-history entry: opening
+// the form adds one, and each Continue adds another. So on a phone,
+// pressing Back goes to the previous step, Back on step 1 closes the
+// form, and only Back after that leaves the site. Closing the form any
+// other way (✕, Escape, Done) removes those entries again, so the Back
+// button always behaves as people expect.
+// ---------------------------------------------------------------------
+let orderHistoryDepth = 0; // how many history entries the open form currently has
+// Closing the form rewinds its history entries, which the browser does a
+// moment later (not instantly). If the form is reopened during that
+// moment, its new entries are held back and added once the rewind has
+// finished — otherwise the late rewind would close the reopened form.
+let closeRewindPending = false;
+function pushOrderStep(step){
+  if(closeRewindPending) return; // added by the popstate handler once the rewind lands
+  orderHistoryDepth = step;
+  history.pushState({ofsOrder:true, step}, '');
+}
+// Move back to an earlier step through history (keeps Back in step).
+function backToStep(step){
+  if(orderHistoryDepth > step && step >= 1){
+    history.go(step - orderHistoryDepth); // the popstate handler shows the step
+    orderHistoryDepth = step;
+  }
+  goToStep(step);
+}
+window.addEventListener('popstate', e => {
+  const s = e.state;
+  const isOpen = document.getElementById('overlay').classList.contains('open');
+  if(closeRewindPending){
+    // This is the rewind from closing the form; it's already closed.
+    closeRewindPending = false;
+    if(isOpen && typeof state.step === 'number'){
+      // Reopened in the meantime: add its entries now, one per step reached.
+      for(let n = 1; n <= state.step; n++) pushOrderStep(n);
+    }
+    return;
+  }
+  if(s && s.ofsOrder){
+    if(isOpen){
+      orderHistoryDepth = s.step;
+      if(state.step !== s.step && state.step !== 'confirm') goToStep(s.step);
+    } else {
+      // A leftover form entry (e.g. after a refresh with the form open):
+      // skip straight past it so one Back press still leaves as expected.
+      history.back();
+    }
+    return;
+  }
+  // Back past the form's first entry: close the form.
+  if(isOpen){ orderHistoryDepth = 0; finishCloseOrder(); }
+});
+
 function closeOrder(){
+  if(orderHistoryDepth > 0){
+    // Unwind the form's history entries; the popstate handler then closes it.
+    const n = orderHistoryDepth;
+    orderHistoryDepth = 0;
+    closeRewindPending = true;
+    history.go(-n);
+    finishCloseOrder();
+    return;
+  }
+  finishCloseOrder();
+}
+function finishCloseOrder(){
+  if(!document.getElementById('overlay').classList.contains('open')) return;
   saveDraft(); // belt-and-suspenders — mutations already save continuously, but cheap insurance on close too
   document.getElementById('overlay').classList.remove('open');
   // Return focus to whatever triggered the modal, so keyboard users don't
@@ -1925,7 +2167,30 @@ DRAFT_TEXT_FIELDS.forEach(id=>{
   });
 });
 
+// The earliest allowed date moves on as the clock does (it rolls forward
+// a day late each evening), so a date that was fine when the customer
+// chose it can be too soon by the time they reach payment. This rechecks
+// it against the current time; if it's no longer allowed, it takes them
+// back to the date step with a clear explanation instead of letting the
+// payment server refuse it.
+function recheckDateStillValid(){
+  if(!state.date) return false;
+  const chosen = state.date;
+  const dateInput = document.getElementById('orderDate');
+  dateInput.min = toInputDate(minOrderDate());
+  dateInput.max = toInputDate(maxOrderDate());
+  validateDate();
+  if(state.date) return true;
+  backToStep(2);
+  const note = document.getElementById('cutoffNote');
+  if(chosen < dateInput.min){
+    note.innerHTML = `⚠️ Time has moved on since you chose <b>${prettyDate(chosen)}</b>, and it's now inside our 48-hour notice window. Please choose <b>${prettyDate(dateInput.min)}</b> or later. Your other details are saved.`;
+  }
+  return false;
+}
+
 function nextStep(){
+  if(state.step===3 && !recheckDateStillValid()) return;
   if(state.step===3){
     state.fname = document.getElementById('fname').value;
     state.lname = document.getElementById('lname').value;
@@ -1940,12 +2205,14 @@ function nextStep(){
     saveDraft();
   }
   if(state.step===4){
+    if(!recheckDateStillValid()) return;
     startCheckout();
     return;
   }
   goToStep(state.step + 1);
+  pushOrderStep(state.step);
 }
-function prevStep(){ goToStep(state.step - 1); }
+function prevStep(){ backToStep(state.step - 1); }
 
 async function parseJsonSafely(res){
   // If Netlify's infrastructure itself has an outage, a request can come
@@ -2072,8 +2339,24 @@ async function showConfirmationFromStripe(sessionId){
       // safeguard rather than relying solely on that trust boundary.
       setConfirmStamp('confirmed');
       document.getElementById('confirmHeading').textContent = 'Order confirmed!';
+      // When and how — so the customer can double-check their date
+      // straight away. Comes from the server's own record of the order
+      // (built from the validated date), not from anything in the browser.
+      let whenLine = '';
+      if(data.dateDisplay){
+        const date = `<b>${escapeHtml(data.dateDisplay)}</b>`;
+        if(data.fulfilment === 'delivery'){
+          whenLine = `Delivery on ${date} — we'll be in touch to confirm a delivery time.`;
+        } else if(data.fulfilment === 'pickup'){
+          whenLine = `Pickup from our Oneroa bakery on ${date}${data.timeWindow ? `, ${escapeHtml(data.timeWindow.replace(/^Anytime/, 'anytime'))}` : ''}.`;
+        } else {
+          whenLine = `Date: ${date}.`;
+        }
+      }
       document.getElementById('confirmSub').innerHTML =
-        `Your order for <b>${escapeHtml(data.orderSummary)}</b> is confirmed — $${escapeHtml(data.amount)} ${escapeHtml(data.currency)} paid. A confirmation email is on its way to you.<br><span style="font-size:12px;color:var(--ink-soft);">Reference: ${escapeHtml(sessionId.slice(-8))}</span>`;
+        `Your order for <b>${escapeHtml(data.orderSummary)}</b> is confirmed — ${escapeHtml(fmt(Number(data.amount) || 0))} ${escapeHtml(data.currency)} paid.` +
+        (whenLine ? `<br><span style="display:inline-block;margin-top:8px;">${whenLine}</span>` : '') +
+        `<br><span style="display:inline-block;margin-top:8px;">A confirmation email is on its way to you.</span><br><span style="font-size:12px;color:var(--ink-soft);">Reference: ${escapeHtml(sessionId.slice(-8))}</span>`;
       cart = [];
       updateCartBadge();
       clearDraft();
@@ -2132,10 +2415,34 @@ function restoreBadgeFromDraftOnPlainLoad(){
     // opening the modal here is enough to give the customer their
     // in-progress order back.
     openOrder();
+    resumeAtReviewStep();
   } else {
     restoreBadgeFromDraftOnPlainLoad();
   }
 })();
+
+// After coming back from Stripe without paying, skip the customer straight
+// to "Review & pay" by stepping through the form exactly as if they'd
+// pressed Continue — so every step's checks still run. If something no
+// longer passes (e.g. their date is now too soon), it stops at that step
+// and shows why.
+function resumeAtReviewStep(){
+  if(cart.length === 0) return;
+  while(state.step < 4){
+    refreshNext();
+    if(document.getElementById('nextBtn').disabled) break;
+    const before = state.step;
+    nextStep();
+    if(state.step <= before) break;
+  }
+  if(state.step === 4){
+    const note = document.getElementById('payNote');
+    if(note){
+      note.textContent = "Payment wasn't completed, so you haven't been charged. Your order is saved — check the docket and continue to payment when you're ready.";
+      note.style.display = 'flex';
+    }
+  }
+}
 
 function escapeHtml(str){
   const div = document.createElement('div');
@@ -2152,10 +2459,10 @@ function updateDocket(){
     if(!c) return '';
     // Cake at its normal price, then the no-added-gluten charge on its own
     // indented row underneath, so it's obvious what the extra is for.
-    let row = `<div class="dk-row"><span class="dk-label">${item.qty}× ${c.name}</span><span>${fmt(c.price * item.qty)}</span></div>`;
+    let row = `<div class="dk-row"><span class="dk-label">${item.qty}× ${c.name}</span><span class="dk-amt">${fmt(c.price * item.qty)}</span></div>`;
     if(item.glutenFree){
       const each = item.qty > 1 ? ` (${item.qty} × ${fmt(GF_SURCHARGE)})` : '';
-      row += `<div class="dk-row dk-sub"><span class="dk-label">+ No added gluten${each}</span><span>${fmt(GF_SURCHARGE * item.qty)}</span></div>`;
+      row += `<div class="dk-row dk-sub"><span class="dk-label">+ No added gluten${each}</span><span class="dk-amt">${fmt(GF_SURCHARGE * item.qty)}</span></div>`;
     }
     // Piped messages, one row per cake that has one (escaped — customer text).
     (item.messages || []).forEach((msg, slot) => {
@@ -2207,7 +2514,7 @@ function updateDocket(){
   const preSurchargeTotalCents = Math.round((cartSubtotal() + deliveryComponent) * 100);
   const cardSurchargeCents = Math.round(preSurchargeTotalCents * CARD_SURCHARGE_RATE);
   const cardSurcharge = cardSurchargeCents / 100;
-  rows += `<div class="dk-row"><span class="dk-label">CREDIT CARD SURCHARGE (${(CARD_SURCHARGE_RATE*100).toFixed(1)}%)</span><span>${fmt(cardSurcharge)}</span></div>`;
+  rows += `<div class="dk-row"><span class="dk-label">CREDIT CARD SURCHARGE (${(CARD_SURCHARGE_RATE*100).toFixed(1)}%)</span><span class="dk-amt">${fmt(cardSurcharge)}</span></div>`;
   body.innerHTML = rows;
   let total = (preSurchargeTotalCents + cardSurchargeCents) / 100;
   document.getElementById('docketTotalVal').textContent = fmt(total);
