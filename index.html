@@ -739,7 +739,7 @@ window.addEventListener('touchmove', closeMenuOnUserScroll, {passive:true});
       <div>
         <p class="eyebrow">The menu</p>
         <h2 style="margin-top:8px;">Cakes worth planning ahead for</h2>
-        <p style="color:var(--ink-soft);font-size:12.5px;opacity:0.8;margin-top:4px;">All whole cakes serve approximately 10–14. Prices in New Zealand dollars (NZD).</p>
+        <p style="color:var(--ink-soft);font-size:12.5px;opacity:0.8;margin-top:4px;max-width:none;"><span style="white-space:nowrap;">All whole cakes serve approximately 10–14.</span> <span style="white-space:nowrap;">Prices in New Zealand dollars (NZD).</span></p>
       </div>
     </div>
     <div class="cakegrid" id="cakeGrid">
@@ -933,7 +933,7 @@ window.addEventListener('touchmove', closeMenuOnUserScroll, {passive:true});
     <h2 style="margin-top:10px;">How pre-ordering works</h2>
     <div class="steps">
       <div class="step"><div class="num">01</div><h3>Pick your cake</h3><p>Choose your favourite from our small-batch cake menu.</p></div>
-      <div class="step"><div class="num">02</div><h3>Choose a date</h3><p>Select pickup or delivery and choose a date at least 48 hours ahead.</p></div>
+      <div class="step"><div class="num">02</div><h3>Choose a date &amp; time</h3><p>Select pickup or delivery, a date at least 48 hours ahead, and a time window.</p></div>
       <div class="step"><div class="num">03</div><h3>Pay online</h3><p>Secure your order with card payment. A 1.8% credit card surcharge applies at checkout.</p></div>
       <div class="step"><div class="num">04</div><h3>We bake it fresh</h3><p>Your cake is made to order and ready on your chosen date, for pickup or delivery.</p></div>
     </div>
@@ -1062,6 +1062,10 @@ window.addEventListener('touchmove', closeMenuOnUserScroll, {passive:true});
         <div class="cutoff-note" id="cutoffNote" style="display:none;"></div>
         <label class="field" for="orderDate">Date</label>
         <input type="date" id="orderDate" onchange="validateDate()">
+        <div id="slotWrap" style="display:none;">
+          <label class="field" for="timeSlot" id="timeSlotLabel">Pickup time</label>
+          <select id="timeSlot" onchange="setTimeSlot(this.value)"></select>
+        </div>
         <p id="timeNote" style="font-size:13px;color:var(--ink-soft);margin:-8px 0 4px;"></p>
       </div>
 
@@ -1353,7 +1357,7 @@ document.getElementById('footerBadge').src = document.getElementById('heroBadge'
 
 /* -------- order flow state -------- */
 let cart = []; // [{cakeId, qty, glutenFree, messages}] — messages: one per cake, only for cakes that take a piped message
-let state = { step:1, fulfil:null, date:null, time:null, paying:false,
+let state = { step:1, fulfil:null, date:null, time:null, timeSlot:null, paying:false,
   fname:'',lname:'',email:'',phone:'' };
 
 // Piped cake messages. Only cakes tagged "Custom Message Available" can
@@ -1474,7 +1478,7 @@ function saveDraft(){
       cart,
       fulfil: state.fulfil,
       date: state.date,
-      time: state.time,
+      timeSlot: state.timeSlot,
       suburb: document.getElementById('suburb') ? document.getElementById('suburb').value : '',
       address: document.getElementById('address') ? document.getElementById('address').value : '',
       fname: document.getElementById('fname') ? document.getElementById('fname').value : '',
@@ -1547,10 +1551,11 @@ function loadDraftIfAny(){
     cart: sanitizedCart,
     fulfil: (data.fulfil === 'pickup' || data.fulfil === 'delivery') ? data.fulfil : null,
     date: (typeof data.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(data.date)) ? data.date : null,
-    // time is deliberately NOT restored from storage — it's always derived
-    // fresh from fulfilment (see openOrder()) so a stale or hand-edited
-    // draft can never end up with a mismatched pair like fulfil:'pickup'
-    // paired with a leftover "Delivery time TBC".
+    // Only the window's short code is kept (checked against the windows
+    // offered for this pickup/delivery choice, so a stale or hand-edited
+    // draft can't restore e.g. a 12pm – 2pm delivery). Its wording is
+    // always worked out fresh — see timeWindowFor().
+    timeSlot: (typeof data.timeSlot === 'string' && isValidTimeSlot(data.fulfil, data.timeSlot)) ? data.timeSlot : null,
     // Validated against the real delivery zone list, not just length-capped —
     // a stale draft (e.g. saved before a suburb was removed from
     // DELIVERY_ZONES) should fall back to "no suburb selected" rather than
@@ -1789,13 +1794,14 @@ function openOrder(cakeId, glutenFree){
   // through last time. See the DRAFT PERSISTENCE comment above.
   const draft = loadDraftIfAny();
 
-  state = { step:1, fulfil:null, date:null, time:null, paying:false,
+  state = { step:1, fulfil:null, date:null, time:null, timeSlot:null, paying:false,
     fname:'',lname:'',email:'',phone:'', address:'' };
   if(draft){
     cart = draft.cart;
     state.fulfil = draft.fulfil;
     state.date = draft.date;
-    state.time = timeWindowFor(draft.fulfil); // derived, never restored directly — see timeWindowFor() comment
+    state.timeSlot = isValidTimeSlot(draft.fulfil, draft.timeSlot) ? draft.timeSlot : null;
+    state.time = timeWindowFor(state.fulfil, state.timeSlot); // wording derived, never restored directly
     state.fname = draft.fname; state.lname = draft.lname;
     state.email = draft.email; state.phone = draft.phone;
     state.address = draft.address;
@@ -1810,6 +1816,7 @@ function openOrder(cakeId, glutenFree){
   document.getElementById('optPickup').classList.toggle('sel', state.fulfil==='pickup');
   document.getElementById('optDelivery').classList.toggle('sel', state.fulfil==='delivery');
   document.getElementById('addressWrap').style.display = state.fulfil==='delivery' ? 'block' : 'none';
+  renderTimeSlots();
   document.getElementById('timeNote').textContent = timeNoteMessageFor(state.fulfil);
 
   // Every step-3 field is explicitly set (to either the restored value or
@@ -1981,18 +1988,51 @@ function currentDeliveryFee(){
   return Number.isFinite(fee) ? fee : null;
 }
 
-function timeWindowFor(fulfil){
-  // The one place this mapping is defined — used both when the customer
-  // actively picks pickup/delivery (setFulfil) and when restoring a
-  // draft (openOrder), so the two can never disagree with each other.
-  if(fulfil === 'pickup') return 'Anytime 7:30am – 3pm';
-  if(fulfil === 'delivery') return 'Delivery time TBC';
-  return null;
+// Pickup and delivery time windows. The customer must choose one.
+// MUST MATCH TIME_SLOTS in netlify/functions/create-checkout-session.js,
+// which checks the choice again and sets the wording used in emails,
+// Airtable and the staff text.
+const TIME_SLOTS = {
+  pickup:   { '8-10': '8am – 10am', '10-12': '10am – 12pm', '12-2': '12pm – 2pm' },
+  delivery: { '8-10': '8am – 10am', '10-12': '10am – 12pm' }
+};
+function isValidTimeSlot(fulfil, slot){
+  return !!TIME_SLOTS[fulfil] && typeof slot === 'string' &&
+    Object.prototype.hasOwnProperty.call(TIME_SLOTS[fulfil], slot);
+}
+function timeWindowFor(fulfil, slot){
+  // The one place the displayed wording is worked out, used both when the
+  // customer picks a window and when a draft is restored, so the two can
+  // never disagree. Returns null until a valid window is chosen.
+  return isValidTimeSlot(fulfil, slot) ? TIME_SLOTS[fulfil][slot] : null;
 }
 function timeNoteMessageFor(fulfil){
-  if(fulfil === 'pickup') return 'Pickup is available anytime from 7:30am to 3pm daily from the bakery.';
-  if(fulfil === 'delivery') return 'Delivery time to be confirmed — we\'ll be in touch to arrange a suitable time.';
+  if(fulfil === 'pickup') return 'Collect from our Oneroa bakery any time within your chosen window.';
+  if(fulfil === 'delivery') return 'Delivery is mornings only. We\'ll deliver within your chosen window.';
   return '';
+}
+// Fills the time dropdown for pickup or delivery, keeping the current
+// choice if it's still offered (e.g. 10am – 12pm when switching from
+// pickup to delivery), otherwise clearing it.
+function renderTimeSlots(){
+  const wrap = document.getElementById('slotWrap');
+  const sel = document.getElementById('timeSlot');
+  if(!wrap || !sel) return;
+  if(!isValidTimeSlot(state.fulfil, state.timeSlot)) state.timeSlot = null;
+  state.time = timeWindowFor(state.fulfil, state.timeSlot);
+  const slots = TIME_SLOTS[state.fulfil];
+  wrap.style.display = slots ? 'block' : 'none';
+  document.getElementById('timeSlotLabel').textContent = state.fulfil === 'delivery' ? 'Delivery time' : 'Pickup time';
+  sel.innerHTML = '<option value="">Choose a time\u2026</option>' +
+    (slots ? Object.keys(slots).map(k => `<option value="${k}">${slots[k]}</option>`).join('') : '');
+  sel.value = state.timeSlot || '';
+}
+function setTimeSlot(slot){
+  state.timeSlot = isValidTimeSlot(state.fulfil, slot) ? slot : null;
+  state.time = timeWindowFor(state.fulfil, state.timeSlot);
+  updateDocket();
+  refreshNext();
+  saveDraft();
 }
 
 function setFulfil(type){
@@ -2008,7 +2048,7 @@ function setFulfil(type){
     const addressEl = document.getElementById('address');
     if(addressEl) addressEl.value = '';
   }
-  state.time = timeWindowFor(type);
+  renderTimeSlots();
   document.getElementById('timeNote').textContent = timeNoteMessageFor(type);
   updateDocket();
   refreshNext();
@@ -2117,7 +2157,7 @@ function refreshNext(){
   let ok = true;
   if(n===1) ok = cart.length > 0;
   if(n===2){
-    ok = !!state.fulfil && !!state.date;
+    ok = !!state.fulfil && !!state.date && isValidTimeSlot(state.fulfil, state.timeSlot);
     if(state.fulfil==='delivery'){
       const suburbVal = document.getElementById('suburb').value;
       ok = ok
@@ -2258,7 +2298,7 @@ async function startCheckout(){
     address: state.fulfil==='delivery' ? (state.address || '') : '',
     date: state.date,
     dateDisplay: prettyDate(state.date),
-    time: state.time,
+    timeSlot: state.timeSlot,
     fname: state.fname,
     lname: state.lname,
     email: state.email,
@@ -2346,9 +2386,13 @@ async function showConfirmationFromStripe(sessionId){
       if(data.dateDisplay){
         const date = `<b>${escapeHtml(data.dateDisplay)}</b>`;
         if(data.fulfilment === 'delivery'){
-          whenLine = `Delivery on ${date} — we'll be in touch to confirm a delivery time.`;
+          // Orders started before the time windows went live say
+          // "Delivery time TBC" — those keep the old wording.
+          whenLine = /^\d/.test(data.timeWindow || '')
+            ? `Delivery on ${date}, <b>${escapeHtml(data.timeWindow)}</b>.`
+            : `Delivery on ${date} — we'll be in touch to confirm a delivery time.`;
         } else if(data.fulfilment === 'pickup'){
-          whenLine = `Pickup from our Oneroa bakery on ${date}${data.timeWindow ? `, ${escapeHtml(data.timeWindow.replace(/^Anytime/, 'anytime'))}` : ''}.`;
+          whenLine = `Pickup from our Oneroa bakery on ${date}${data.timeWindow ? `, <b>${escapeHtml(data.timeWindow.replace(/^Anytime/, 'anytime'))}</b>` : ''}.`;
         } else {
           whenLine = `Date: ${date}.`;
         }

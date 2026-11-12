@@ -77,7 +77,7 @@ taken back to the date step with an explanation, details kept.
 
 **Order confirmed screen** (after paying) shows what was ordered, the
 amount paid, and the pickup or delivery date — e.g. "Pickup from our
-Oneroa bakery on Sat, 17 Oct 2026, anytime 7:30am – 3pm" — taken from
+Oneroa bakery on Sat, 17 Oct 2026, 10am – 12pm" — taken from
 Stripe's record of the order, so customers can check their date
 straight away.
 
@@ -426,6 +426,33 @@ why every email sets a separate reply address (see above). If the
 domain ever stops being verified in Resend, emails will stop sending,
 so keep the domain's DNS records in place.
 
+## Pickup and delivery time windows
+
+In step 2 the customer must choose a time window before they can continue:
+
+- **Pickup:** 8am – 10am, 10am – 12pm, or 12pm – 2pm
+- **Delivery:** 8am – 10am or 10am – 12pm (mornings only)
+
+The chosen window shows on the order docket, the order-confirmed screen,
+both emails, the **Time Window** column in Airtable, and the staff text
+(e.g. "Pickup Wed, 18 Nov 2026 12pm-2pm"). If a customer switches from
+pickup to delivery after picking 12pm – 2pm, the choice is cleared and
+they pick again.
+
+The server checks the window again before taking payment, so a 12pm – 2pm
+delivery (or any made-up window) is refused even if someone tampers with
+the page. **To change the windows**, edit `TIME_SLOTS` in both
+`index.html` and `netlify/functions/create-checkout-session.js`. The two
+lists must match.
+
+**Airtable sorting:** make **Time Window** a *Single select* column with
+the options in time order (8am – 10am, 10am – 12pm, 12pm – 2pm), so
+sorting puts 8am first. As plain text, Airtable sorts it alphabetically
+(10am, 12pm, 8am). The webhook sends orders to Airtable with
+`typecast` on, so if an option is missing or renamed Airtable adds it
+instead of refusing the order (if Airtable won't add it, the order
+still arrives by the "⚠️ NOT IN AIRTABLE" bakery email).
+
 ## Tracking orders in Airtable
 
 By default you'd have to check Stripe or your email to see what's been
@@ -448,7 +475,7 @@ this week — in one place, without touching Stripe.
 | Cake | Single line text |
 | Fulfilment | Single line text |
 | Pickup/Delivery Date | Single line text |
-| Time Window | Single line text |
+| Time Window | Single select (options in this order: 8am – 10am, 10am – 12pm, 12pm – 2pm) |
 | Suburb | Single line text |
 | Delivery Address | Single line text |
 | Customer Name | Single line text |

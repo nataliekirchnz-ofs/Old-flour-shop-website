@@ -414,9 +414,15 @@ exports.handler = async (event) => {
       </table>`;
 
   const cakeWord = parseInt(m.item_count, 10) > 1 ? 'cakes' : 'cake';
+  // "8am – 10am" → "between 8am and 10am". Orders started on the website
+  // before the time windows went live carry the old wording instead
+  // ("Anytime 7:30am – 3pm" / "Delivery time TBC"), so those keep the old
+  // sentences rather than reading "between Delivery time TBC".
+  const win = /^(\d{1,2}(?::\d{2})?[ap]m) \u2013 (\d{1,2}(?::\d{2})?[ap]m)$/.exec(m.time_window || '');
+  const between = win ? `between <strong>${escapeHtml(win[1])}</strong> and <strong>${escapeHtml(win[2])}</strong>` : '';
   const fulfilLine = m.fulfilment === 'delivery'
-    ? `We'll deliver your ${cakeWord} to <strong>${safeDeliveryAddress || 'your address'}</strong> (${safeSuburb || 'Waiheke Island'}) on <strong>${safeDate}</strong>. We'll be in touch to confirm a delivery time.`
-    : `Your ${cakeWord} will be ready for pickup from our Oneroa bakery on <strong>${safeDate}</strong>. ${safeTime ? safeTime + '.' : ''}`;
+    ? `We'll deliver your ${cakeWord} to <strong>${safeDeliveryAddress || 'your address'}</strong> (${safeSuburb || 'Waiheke Island'}) on <strong>${safeDate}</strong>${between ? `, ${between}` : `. We'll be in touch to confirm a delivery time`}.`
+    : `Your ${cakeWord} will be ready for pickup from our Oneroa bakery on <strong>${safeDate}</strong>${between ? `. Please collect ${between}` : safeTime ? `, ${safeTime.replace(/^Anytime/, 'anytime')}` : ''}.`;
 
   const customerEmailHtml = `
     <div style="font-family:sans-serif;font-size:15px;color:#2B3C25;line-height:1.6;max-width:520px;">
@@ -496,6 +502,10 @@ exports.handler = async (event) => {
           },
           signal: AbortSignal.timeout(timeLeft(2500)),
           body: JSON.stringify({
+            // Lets Airtable match text to a dropdown ("single select")
+            // column, e.g. Time Window, adding the option if it's missing
+            // rather than refusing the whole order.
+            typecast: true,
             records: [{
               fields: {
                 // This is Airtable's primary field (the default first
@@ -619,7 +629,7 @@ exports.handler = async (event) => {
         reference: `Cake order ${String(session.id || '').slice(-8)}`,   // same reference as the confirmation page
         testMode: /^(true|yes|1)$/i.test(process.env.TNZ_TEST_MODE || ''),
         timeLeft: () => timeLeft(),
-        body: `${airtableProblem ? 'NOT IN AIRTABLE - add by hand. ' : ''}New order: ${m.order_summary || 'Cake'}. ${m.fulfilment === 'delivery' ? `Delivery (${m.suburb || '?'})` : 'Pickup'} ${m.pickup_delivery_date || ''}. ${m.customer_name || ''} ${m.phone || ''}. $${amountShown} paid`
+        body: `${airtableProblem ? 'NOT IN AIRTABLE - add by hand. ' : ''}New order: ${m.order_summary || 'Cake'}. ${m.fulfilment === 'delivery' ? `Delivery (${m.suburb || '?'})` : 'Pickup'} ${m.pickup_delivery_date || ''}${m.time_window ? ' ' + m.time_window.replace(/\u2013/g, '-').replace(/\s+-\s+/g, '-') : ''}. ${m.customer_name || ''} ${m.phone || ''}. $${amountShown} paid`
       })
     : Promise.resolve();
 

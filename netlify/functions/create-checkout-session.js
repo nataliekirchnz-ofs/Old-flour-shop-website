@@ -206,14 +206,19 @@ function maxBookableDateNZ() {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + MAX_BOOKING_MONTHS_AHEAD, now.getUTCDate(), 0, 0, 0));
 }
 
-// The time wording shown in emails/Airtable. Set here on the server from
-// the (already validated) pickup/delivery choice, never taken from the
-// browser. Must match timeWindowFor() in index.html so the wording the
-// customer sees on the website is the same as in their email.
-const TIME_WINDOWS = {
-  pickup: 'Anytime 7:30am – 3pm',
-  delivery: 'Delivery time TBC'
+// The pickup and delivery time windows the customer can choose from.
+// The browser sends only the short code (e.g. "10-12"); it's checked here
+// against the windows offered for pickup or delivery, and the wording
+// shown in emails/Airtable/the staff text comes from this list, never
+// from the browser. MUST MATCH TIME_SLOTS in index.html.
+const TIME_SLOTS = {
+  pickup:   { '8-10': '8am – 10am', '10-12': '10am – 12pm', '12-2': '12pm – 2pm' },
+  delivery: { '8-10': '8am – 10am', '10-12': '10am – 12pm' }
 };
+function timeWindowFor(fulfil, slot) {
+  const slots = TIME_SLOTS[fulfil];
+  return slots && typeof slot === 'string' && Object.prototype.hasOwnProperty.call(slots, slot) ? slots[slot] : null;
+}
 
 // Turns a validated "YYYY-MM-DD" into the friendly "Sat, 3 Oct 2026" style
 // used in emails — built here on the server, rather than trusting the
@@ -322,6 +327,13 @@ exports.handler = async (event) => {
   // ---- 4. validate fulfilment + look up delivery fee server-side ----
   if (order.fulfil !== 'pickup' && order.fulfil !== 'delivery') {
     return { statusCode: 400, body: JSON.stringify({ error: 'Please choose pickup or delivery.' }) };
+  }
+
+  const timeWindow = timeWindowFor(order.fulfil, order.timeSlot);
+  if (!timeWindow) {
+    return { statusCode: 400, body: JSON.stringify({ error: order.fulfil === 'delivery'
+      ? 'Please choose a delivery time: 8am – 10am or 10am – 12pm.'
+      : 'Please choose a pickup time.' }) };
   }
 
   let deliveryFeeCents = 0;
@@ -460,7 +472,7 @@ exports.handler = async (event) => {
     suburb: suburb,
     delivery_address: order.fulfil === 'delivery' ? (order.address || '').trim() : '',
     // Both built server-side from validated values (see displayDate and
-    // TIME_WINDOWS above) — the browser's own dateDisplay/time are ignored.
+    // TIME_SLOTS above) — the browser's own dateDisplay is ignored.
     pickup_delivery_date: displayDate(order.date),
     // order.date is already validated as a plain YYYY-MM-DD string by
     // isValidBookingDate() above — kept separately from the human-
@@ -468,7 +480,7 @@ exports.handler = async (event) => {
     // this exact ISO format to parse correctly, while the emails want
     // the friendly "Sat, 13 Sept 2026" style instead.
     pickup_delivery_date_iso: order.date,
-    time_window: TIME_WINDOWS[order.fulfil] || '',
+    time_window: timeWindow,
     customer_name: `${order.fname} ${order.lname}`,
     phone: order.phone || '',
     cake_message: cakeMessageText.slice(0, MESSAGE_CHUNK), // any remainder goes in cake_message_1, _2 ... below
