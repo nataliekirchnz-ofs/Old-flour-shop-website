@@ -1555,7 +1555,7 @@ function loadDraftIfAny(){
     // offered for this pickup/delivery choice, so a stale or hand-edited
     // draft can't restore e.g. a 12pm – 2pm delivery). Its wording is
     // always worked out fresh — see timeWindowFor().
-    timeSlot: (typeof data.timeSlot === 'string' && isValidTimeSlot(data.fulfil, data.timeSlot)) ? data.timeSlot : null,
+    timeSlot: (typeof data.timeSlot === 'string' && isValidTimeSlot(data.fulfil, data.timeSlot, data.date)) ? data.timeSlot : null,
     // Validated against the real delivery zone list, not just length-capped —
     // a stale draft (e.g. saved before a suburb was removed from
     // DELIVERY_ZONES) should fall back to "no suburb selected" rather than
@@ -1800,7 +1800,7 @@ function openOrder(cakeId, glutenFree){
     cart = draft.cart;
     state.fulfil = draft.fulfil;
     state.date = draft.date;
-    state.timeSlot = isValidTimeSlot(draft.fulfil, draft.timeSlot) ? draft.timeSlot : null;
+    state.timeSlot = isValidTimeSlot(draft.fulfil, draft.timeSlot, draft.date) ? draft.timeSlot : null;
     state.time = timeWindowFor(state.fulfil, state.timeSlot); // wording derived, never restored directly
     state.fname = draft.fname; state.lname = draft.lname;
     state.email = draft.email; state.phone = draft.phone;
@@ -1996,9 +1996,44 @@ const TIME_SLOTS = {
   pickup:   { '8-10': '8am – 10am', '10-12': '10am – 12pm', '12-2': '12pm – 2pm' },
   delivery: { '8-10': '8am – 10am', '10-12': '10am – 12pm' }
 };
-function isValidTimeSlot(fulfil, slot){
-  return !!TIME_SLOTS[fulfil] && typeof slot === 'string' &&
-    Object.prototype.hasOwnProperty.call(TIME_SLOTS[fulfil], slot);
+// Special days: dates with different options from usual.
+//   delivery: false   → pickup only that day
+//   pickupSlots       → which pickup windows are offered (codes from TIME_SLOTS)
+//   deliverySlots     → which delivery windows are offered (if delivery is on)
+// Leave a setting out to keep the usual for it. Every other day is normal.
+// MUST MATCH SPECIAL_DAYS in netlify/functions/create-checkout-session.js.
+const SPECIAL_DAYS = {
+  '2026-11-28': { delivery: false, pickupSlots: ['8-10', '10-12'] }
+};
+// "2026-11-28" → "Saturday 28 November"
+function longDate(iso) {
+  return new Intl.DateTimeFormat('en-NZ', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
+    .format(new Date(iso + 'T12:00:00Z')).replace(',', '');
+}
+function specialDay(date) {
+  return typeof date === 'string' && Object.prototype.hasOwnProperty.call(SPECIAL_DAYS, date) ? SPECIAL_DAYS[date] : null;
+}
+function deliveryOffered(date){
+  const sd = specialDay(date);
+  return !(sd && sd.delivery === false);
+}
+// The windows offered for pickup/delivery on a given date (all of them
+// until a date is chosen, then trimmed by SPECIAL_DAYS for that date).
+function slotsFor(fulfil, date){
+  const all = TIME_SLOTS[fulfil];
+  if(!all) return null;
+  const sd = specialDay(date);
+  if(!sd) return all;
+  if(fulfil === 'delivery' && sd.delivery === false) return {};
+  const only = fulfil === 'delivery' ? sd.deliverySlots : sd.pickupSlots;
+  if(!only) return all;
+  const out = {};
+  Object.keys(all).forEach(k => { if(only.includes(k)) out[k] = all[k]; });
+  return out;
+}
+function isValidTimeSlot(fulfil, slot, date){
+  const slots = slotsFor(fulfil, date === undefined ? state.date : date);
+  return !!slots && typeof slot === 'string' && Object.prototype.hasOwnProperty.call(slots, slot);
 }
 function timeWindowFor(fulfil, slot){
   // The one place the displayed wording is worked out, used both when the
@@ -2020,8 +2055,8 @@ function renderTimeSlots(){
   if(!wrap || !sel) return;
   if(!isValidTimeSlot(state.fulfil, state.timeSlot)) state.timeSlot = null;
   state.time = timeWindowFor(state.fulfil, state.timeSlot);
-  const slots = TIME_SLOTS[state.fulfil];
-  wrap.style.display = slots ? 'block' : 'none';
+  const slots = slotsFor(state.fulfil, state.date);
+  wrap.style.display = slots && Object.keys(slots).length ? 'block' : 'none';
   document.getElementById('timeSlotLabel').textContent = state.fulfil === 'delivery' ? 'Delivery time' : 'Pickup time';
   sel.innerHTML = '<option value="">Choose a time\u2026</option>' +
     (slots ? Object.keys(slots).map(k => `<option value="${k}">${slots[k]}</option>`).join('') : '');
@@ -2050,6 +2085,9 @@ function setFulfil(type){
   }
   renderTimeSlots();
   document.getElementById('timeNote').textContent = timeNoteMessageFor(type);
+  // Re-check the chosen date against the new choice, e.g. delivery on a
+  // pickup-only day (this also refreshes the time windows for that day).
+  if(document.getElementById('orderDate').value) validateDate();
   updateDocket();
   refreshNext();
   saveDraft();
@@ -2079,17 +2117,22 @@ function validateDate(){
   if(val < minDateString){
     note.style.display='flex';
     note.classList.add('blocked');
-    note.innerHTML = `⚠️ That date is inside our 48-hour window. Please choose <b>${prettyDate(minDateString)}</b> or later.`;
+    note.innerHTML = `<span>⚠️ That date is inside our 48-hour window. Please choose <b>${prettyDate(minDateString)}</b> or later.</span>`;
     state.date = null;
   } else if(val > maxDateString){
     note.style.display='flex';
     note.classList.add('blocked');
-    note.innerHTML = `⚠️ We only take bookings up to ${MAX_BOOKING_MONTHS_AHEAD} months ahead. Please choose <b>${prettyDate(maxDateString)}</b> or earlier.`;
+    note.innerHTML = `<span>⚠️ We only take bookings up to ${MAX_BOOKING_MONTHS_AHEAD} months ahead. Please choose <b>${prettyDate(maxDateString)}</b> or earlier.</span>`;
     state.date = null;
   } else if(BLACKOUT_DATES.includes(val)){
     note.style.display='flex';
     note.classList.add('blocked');
-    note.innerHTML = `⚠️ We're closed on <b>${prettyDate(val)}</b>. Please choose another date.`;
+    note.innerHTML = `<span>⚠️ We're closed on <b>${prettyDate(val)}</b>. Please choose another date.</span>`;
+    state.date = null;
+  } else if(state.fulfil === 'delivery' && !deliveryOffered(val)){
+    note.style.display='flex';
+    note.classList.add('blocked');
+    note.innerHTML = `<span>⚠️ Delivery isn't available on <b>${longDate(val)}</b>, pickup only. Please choose pickup above, or another date.</span>`;
     state.date = null;
   } else {
     note.style.display='none';
@@ -2097,6 +2140,7 @@ function validateDate(){
     note.innerHTML = '';
     state.date = val;
   }
+  renderTimeSlots(); // the windows offered can depend on the date (SPECIAL_DAYS)
   updateDocket();
   refreshNext();
   saveDraft();
@@ -2224,7 +2268,7 @@ function recheckDateStillValid(){
   backToStep(2);
   const note = document.getElementById('cutoffNote');
   if(chosen < dateInput.min){
-    note.innerHTML = `⚠️ Time has moved on since you chose <b>${prettyDate(chosen)}</b>, and it's now inside our 48-hour notice window. Please choose <b>${prettyDate(dateInput.min)}</b> or later. Your other details are saved.`;
+    note.innerHTML = `<span>⚠️ Time has moved on since you chose <b>${prettyDate(chosen)}</b>, and it's now inside our 48-hour notice window. Please choose <b>${prettyDate(dateInput.min)}</b> or later. Your other details are saved.</span>`;
   }
   return false;
 }

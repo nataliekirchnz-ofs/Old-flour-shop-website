@@ -445,6 +445,23 @@ the page. **To change the windows**, edit `TIME_SLOTS` in both
 `index.html` and `netlify/functions/create-checkout-session.js`. The two
 lists must match.
 
+**Special days** (different options on particular dates): set in
+`SPECIAL_DAYS`, in both `index.html` and
+`netlify/functions/create-checkout-session.js` (the two lists must
+match). Currently:
+
+- **Saturday 28 November 2026:** pickup only, 8am – 10am or 10am – 12pm.
+  A customer who picks delivery and then that date sees "Delivery isn't
+  available on Saturday 28 November, pickup only" and can't continue
+  until they switch to pickup or change the date. The server refuses a
+  delivery, or a 12pm – 2pm pickup, on that date too.
+
+To add another, copy the line, e.g.
+`'2026-12-24': { delivery: false, pickupSlots: ['8-10', '10-12'] }` for
+Christmas Eve. Leave out `delivery: false` to keep delivery, or add
+`deliverySlots: ['8-10']` to limit delivery times. Old dates can stay in
+the list harmlessly.
+
 **Airtable sorting:** make **Time Window** a *Single select* column with
 the options in time order (8am – 10am, 10am – 12pm, 12pm – 2pm), so
 sorting puts 8am first. As plain text, Airtable sorts it alphabetically

@@ -215,6 +215,23 @@ const TIME_SLOTS = {
   pickup:   { '8-10': '8am – 10am', '10-12': '10am – 12pm', '12-2': '12pm – 2pm' },
   delivery: { '8-10': '8am – 10am', '10-12': '10am – 12pm' }
 };
+// Special days: dates with different options from usual.
+//   delivery: false   → pickup only that day
+//   pickupSlots       → which pickup windows are offered (codes from TIME_SLOTS)
+//   deliverySlots     → which delivery windows are offered (if delivery is on)
+// Leave a setting out to keep the usual for it. Every other day is normal.
+// MUST MATCH SPECIAL_DAYS in index.html.
+const SPECIAL_DAYS = {
+  '2026-11-28': { delivery: false, pickupSlots: ['8-10', '10-12'] }
+};
+// "2026-11-28" → "Saturday 28 November"
+function longDate(iso) {
+  return new Intl.DateTimeFormat('en-NZ', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
+    .format(new Date(iso + 'T12:00:00Z')).replace(',', '');
+}
+function specialDay(date) {
+  return typeof date === 'string' && Object.prototype.hasOwnProperty.call(SPECIAL_DAYS, date) ? SPECIAL_DAYS[date] : null;
+}
 function timeWindowFor(fulfil, slot) {
   const slots = TIME_SLOTS[fulfil];
   return slots && typeof slot === 'string' && Object.prototype.hasOwnProperty.call(slots, slot) ? slots[slot] : null;
@@ -368,6 +385,18 @@ exports.handler = async (event) => {
   }
   if (BLACKOUT_DATES.includes(order.date)) {
     return { statusCode: 400, body: JSON.stringify({ error: "We're closed on that date. Please choose another." }) };
+  }
+  // Special days (SPECIAL_DAYS above): pickup only, and/or fewer time windows.
+  const sd = specialDay(order.date);
+  if (sd) {
+    if (order.fulfil === 'delivery' && sd.delivery === false) {
+      return { statusCode: 400, body: JSON.stringify({ error: `Delivery isn't available on ${longDate(order.date)}, pickup only. Please go back and choose pickup or another date.` }) };
+    }
+    const allowed = order.fulfil === 'delivery' ? sd.deliverySlots : sd.pickupSlots;
+    if (allowed && !allowed.includes(order.timeSlot)) {
+      const offered = allowed.map(k => TIME_SLOTS[order.fulfil][k]).join(' or ');
+      return { statusCode: 400, body: JSON.stringify({ error: `On ${longDate(order.date)} we can only offer ${order.fulfil} ${offered}. Please go back and choose one of those times.` }) };
+    }
   }
 
   // ---- 6. validate customer details ----
