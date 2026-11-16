@@ -1,0 +1,585 @@
+// netlify/functions/create-checkout-session.js
+//
+// SECURITY MODEL:
+// The browser is never trusted for money-related values. It only ever
+// sends a list of {cakeId, quantity, glutenFree} entries and a suburb;
+// this function looks up the real price of each cake and the real
+// delivery fee itself from the allowlists below, and builds the Stripe
+// Checkout line items from those looked-up values only. Nothing the
+// browser sends is used to set an amount.
+//
+// Every one of these is independently validated here, not just hinted
+// at in the UI — see the numbered checks in the handler below:
+//   1. cake IDs must exist in the CAKES allowlist
+//   2. quantities must be integers between 1 and MAX_ITEM_QTY
+//   3. a "no added gluten" request is only honoured for cakes that
+//      actually offer it (glutenFreeOption: true) — silently ignored,
+//      not an error, for any other cake
+//   4. delivery suburbs must exist in the DELIVERY_ZONES allowlist
+//   5. the date must be a real calendar date, at least 48 hours out
+//      (in genuine NZ time, not the server's own clock), not more than
+//      MAX_BOOKING_MONTHS_AHEAD out, and not a blackout date
+//   6. email must pass a real format check, phone a reasonable digit-
+//      count check
+// A request failing any of these never reaches Stripe.
+//
+// ── IMPORTANT — KEEPING THIS IN SYNC ────────────────────────────────────
+// CAKES, DELIVERY_ZONES, BLACKOUT_DATES, GF_SURCHARGE and
+// CARD_SURCHARGE_RATE below are a deliberate copy of the same values in
+// index.html's <script>. This site has no build step and no database, so
+// there is no single source of truth to share automatically — if you add
+// a cake, remove a cake, change a price/delivery fee, change either
+// surcharge, or add a closed date on the website, you must make the same
+// change here, or checkout will use the old value. Keep the `id` values
+// identical between the two files; that's what links them.
+// ─────────────────────────────────────────────────────────────────────
+
+const CAKES = {
+  'chocolate-cake':          { name: 'Chocolate Celebration Cake', price: 145, glutenFreeOption: false, cakeMessage: true },
+  'vegan-chocolate-cake':    { name: 'Vegan Chocolate Cake',       price: 160, glutenFreeOption: true, cakeMessage: true },
+  'raspberry-cheesecake':    { name: 'Raspberry Cheesecake',       price: 125, glutenFreeOption: true },
+  'chocolate-marquise':      { name: 'Chocolate Marquise',         price: 130, glutenFreeOption: false },
+  'tiramisu-cake':           { name: 'Tiramisu Cake',              price: 130, glutenFreeOption: false },
+  'lemon-velvet':            { name: 'Lemon Mousse Cake',          price: 120, glutenFreeOption: true },
+  'orange-almond':           { name: 'Orange & Almond Cake',       price: 120, glutenFreeOption: false }, // naturally no added gluten already, not an "option"
+  'passionfruit-cheesecake': { name: 'Passionfruit Cheesecake',    price: 125, glutenFreeOption: true },
+  'lemon-lover-cake':        { name: 'Lemon Lover Cake',           price: 135, glutenFreeOption: false, cakeMessage: true },
+  'raspberry-crumble':       { name: 'Raspberry Crumble Cake',     price: 100, glutenFreeOption: false },
+  'boysenberry-cheesecake':  { name: 'Boysenberry Cheesecake',     price: 125, glutenFreeOption: true },
+  'key-lime-pie':            { name: 'Key Lime Pie',               price: 130, glutenFreeOption: true },
+};
+
+const DELIVERY_ZONES = [
+  { fee: 15, suburbs: ['Oneroa', 'Blackpool', 'Little Oneroa'] },
+  { fee: 20, suburbs: ['Surfdale', 'Palm Beach', 'Ostend'] },
+  { fee: 25, suburbs: ['Mudbrick Vineyard', 'Cable Bay Vineyard', 'Wild on Waiheke', 'Stoneyridge Vineyard', 'Te Motu Estate', 'Tantalus Estate', 'Onetangi'] },
+];
+
+// Dates the bakery is closed / not taking orders. Format: 'YYYY-MM-DD'.
+// This is the authoritative copy — index.html has a matching one for
+// immediate UI feedback, but this is what actually blocks a booking.
+//
+// NOTE — DAILY PRODUCTION CAPACITY IS NOT HANDLED HERE (BY DESIGN):
+// This list only blocks specific closed dates, not "how many cakes can
+// realistically be made for a given open day." If that ever becomes a
+// real constraint, it must be enforced authoritatively here (or in
+// whatever order-management system this evolves into) — e.g. by
+// querying a live count of existing orders for a date (Airtable or
+// similar) before allowing a new one. It must never be trusted to the
+// browser/frontend alone, for the same reason prices and every other
+// value in this file aren't: the frontend is a convenience layer, not
+// a security or business-rule boundary — anything enforced only there
+// can be bypassed by a direct request to this endpoint.
+const BLACKOUT_DATES = ['2026-12-25', '2027-01-01'];
+
+const CUTOFF_HOURS = 48;
+// How long Stripe's payment page stays open before it expires (Stripe
+// allows 30 minutes to 24 hours). Kept short so nobody can choose a date,
+// leave the payment page open and pay once it's inside the 48 hours.
+// The chosen date must still be valid at the moment the payment page
+// expires, not just now — otherwise a page opened at 11:50pm could be
+// paid after midnight for a date that's no longer allowed. Must match
+// CHECKOUT_WINDOW_MINUTES in index.html.
+const CHECKOUT_WINDOW_MINUTES = 35;
+const MAX_BOOKING_MONTHS_AHEAD = 6; // must match MAX_BOOKING_MONTHS_AHEAD in index.html
+const MAX_ITEM_QTY = 20;      // sanity cap per cake line
+
+// Length limits for the customer's details — generous for real names and
+// addresses, but stop junk (e.g. a 5,000-character "name") reaching Stripe,
+// the emails and Airtable. Must match the maxlength values in index.html.
+const MAX_NAME_LENGTH = 100;
+const MAX_EMAIL_LENGTH = 254;
+const MAX_PHONE_LENGTH = 30;
+const MAX_ADDRESS_LENGTH = 300;
+
+// Piped cake messages: only cakes marked cakeMessage: true above can
+// take one (must match the "Custom Message Available" tag in index.html),
+// one message per cake, up to this many characters each. Messages sent
+// for any other cake are ignored.
+const CAKE_MESSAGE_MAX = 30;
+// Only characters that can actually be piped — letters (including accented
+// and macron letters), numbers, spaces and everyday punctuation (including
+// curly apostrophes/quotes from phone keyboards). Emoji, symbols and
+// control characters are removed. Must match CAKE_MESSAGE_DISALLOWED in
+// index.html.
+const CAKE_MESSAGE_DISALLOWED = /[^\p{L}\p{M}\p{N} .,!?'\u2018\u2019"\u201C\u201D&\-\u2013\u2014():;\/+#@*%]/gu;
+// Hidden pieces some emoji are built from (e.g. the invisible marker in ❤️
+// or keycap 1️⃣). They'd otherwise pass as 'accents' and be left behind.
+const CAKE_MESSAGE_EMOJI_PARTS = /[\uFE00-\uFE0F\u20E3\u200D\u{E0100}-\u{E01EF}]/gu;
+
+// Returns the cleaned messages for one cart line: at most one per cake,
+// with emoji/symbols/line breaks removed, trimmed, capped at
+// CAKE_MESSAGE_MAX.
+function cleanCakeMessages(cake, rawMessages, qty) {
+  if (!cake.cakeMessage || !Array.isArray(rawMessages)) return [];
+  return rawMessages.slice(0, qty).map(msg =>
+    typeof msg === 'string'
+      ? msg.replace(/\s+/g, ' ').replace(CAKE_MESSAGE_EMOJI_PARTS, '').replace(CAKE_MESSAGE_DISALLOWED, '').replace(/ +/g, ' ').trim().slice(0, CAKE_MESSAGE_MAX)
+      : ''
+  );
+}
+const MAX_CART_ITEMS = 20;    // sanity cap on number of distinct cart lines in one order
+const GF_SURCHARGE = 7.50;    // per-cake charge for the no-added-gluten variant, in dollars — this is the authoritative value actually charged; index.html has a matching copy for display purposes only
+const CARD_SURCHARGE_RATE = 0.018; // 1.8% card processing surcharge, applied to (cake items + delivery fee) — this is the authoritative rate actually charged; index.html has a matching copy for display purposes only
+
+// RATE LIMITING — best-effort only. This Map lives at module scope, so it
+// persists for the lifetime of a warm Netlify function container, and is
+// reset on cold start. It also isn't shared across multiple concurrent
+// instances if traffic is spread across them. This is NOT a substitute
+// for a real distributed rate limiter (e.g. Upstash Redis) if this site
+// ever needs to withstand deliberate abuse at scale — but it costs
+// nothing extra and stops the common case: an accidental retry loop or a
+// casual script hammering this endpoint from one place.
+const requestLog = new Map(); // ip -> array of request timestamps (ms)
+const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+const RATE_LIMIT_MAX = 10;                  // max checkout attempts per IP per window
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const recent = (requestLog.get(ip) || []).filter(t => now - t < RATE_LIMIT_WINDOW_MS);
+  recent.push(now);
+  requestLog.set(ip, recent);
+  return recent.length > RATE_LIMIT_MAX;
+}
+
+function clientIpFrom(event) {
+  // x-forwarded-for can be a comma-separated chain (client, proxy, proxy...)
+  // when requests pass through intermediaries — only the first entry is
+  // the actual client, so that's what we key the rate limiter on.
+  const xff = event.headers['x-forwarded-for'];
+  const firstForwarded = xff ? xff.split(',')[0].trim() : '';
+  return event.headers['x-nf-client-connection-ip'] || event.headers['client-ip'] || firstForwarded || 'unknown';
+}
+
+function findDeliveryFee(suburb) {
+  const zone = DELIVERY_ZONES.find(z => z.suburbs.includes(suburb));
+  return zone ? zone.fee : null; // null = not a suburb we recognise
+}
+
+function isValidEmail(email) {
+  return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isReasonablePhone(value) {
+  const digits = typeof value === 'string' ? value.replace(/[^0-9]/g, '') : '';
+  return digits.length >= 7 && digits.length <= 15;
+}
+
+// All date/cutoff logic below is deliberately anchored to New Zealand
+// time (Pacific/Auckland), not this server's own clock — Netlify
+// functions typically run in UTC, which is NOT the same as NZ time, so
+// using the server's "local" Date methods directly would silently
+// enforce the wrong cutoff. We get NZ wall-clock time via
+// Intl.DateTimeFormat, then represent it using Date's UTC fields purely
+// as a convenient calendar-math frame — no real UTC conversion is implied.
+function nzNowAsUTC() {
+  const fmt = new Intl.DateTimeFormat('en-NZ', {
+    timeZone: 'Pacific/Auckland',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+  });
+  const p = Object.fromEntries(fmt.formatToParts(new Date()).map(x => [x.type, x.value]));
+  const hour = p.hour === '24' ? 0 : Number(p.hour); // midnight can format as "24" with hour12:false
+  return new Date(Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), hour, Number(p.minute), Number(p.second)));
+}
+
+function minBookableDateNZ() {
+  // The earliest bookable calendar day must have its full 24 hours (from
+  // NZ midnight onward — the earliest a pickup could realistically be
+  // collected) sit at or beyond now + CUTOFF_HOURS. If we instead floored
+  // to the start of whatever day "now + 48h" happens to fall on, an early
+  // pickup that same day could end up with less than the full 48 hours'
+  // notice — so when the cutoff doesn't land exactly on midnight, the
+  // minimum bookable day rolls forward to the next one. This must never
+  // be loosened back to a floor, or the stated 48-hour promise can be
+  // silently broken for early same-day pickups.
+  const now = nzNowAsUTC();
+  const cutoff = new Date(now.getTime() + CUTOFF_HOURS * 3600 * 1000 + CHECKOUT_WINDOW_MINUTES * 60 * 1000);
+  const atMidnight = cutoff.getUTCHours() === 0 && cutoff.getUTCMinutes() === 0 && cutoff.getUTCSeconds() === 0;
+  let minDate = new Date(Date.UTC(cutoff.getUTCFullYear(), cutoff.getUTCMonth(), cutoff.getUTCDate(), 0, 0, 0));
+  if (!atMidnight) { minDate = new Date(minDate.getTime() + 24 * 3600 * 1000); }
+  return minDate;
+}
+
+function maxBookableDateNZ() {
+  const now = nzNowAsUTC();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + MAX_BOOKING_MONTHS_AHEAD, now.getUTCDate(), 0, 0, 0));
+}
+
+// The pickup and delivery time windows the customer can choose from.
+// The browser sends only the short code (e.g. "10-12"); it's checked here
+// against the windows offered for pickup or delivery, and the wording
+// shown in emails/Airtable/the staff text comes from this list, never
+// from the browser. MUST MATCH TIME_SLOTS in index.html.
+const TIME_SLOTS = {
+  pickup:   { '8-10': '8am – 10am', '10-12': '10am – 12pm', '12-2': '12pm – 2pm' },
+  delivery: { '8-10': '8am – 10am', '10-12': '10am – 12pm' }
+};
+// Special days: dates with different options from usual.
+//   delivery: false   → pickup only that day
+//   pickupSlots       → which pickup windows are offered (codes from TIME_SLOTS)
+//   deliverySlots     → which delivery windows are offered (if delivery is on)
+// Leave a setting out to keep the usual for it. Every other day is normal.
+// MUST MATCH SPECIAL_DAYS in index.html.
+const SPECIAL_DAYS = {
+  '2026-11-28': { delivery: false, pickupSlots: ['8-10', '10-12'] }
+};
+// "2026-11-28" → "Saturday 28 November"
+function longDate(iso) {
+  return new Intl.DateTimeFormat('en-NZ', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
+    .format(new Date(iso + 'T12:00:00Z')).replace(',', '');
+}
+function specialDay(date) {
+  return typeof date === 'string' && Object.prototype.hasOwnProperty.call(SPECIAL_DAYS, date) ? SPECIAL_DAYS[date] : null;
+}
+function timeWindowFor(fulfil, slot) {
+  const slots = TIME_SLOTS[fulfil];
+  return slots && typeof slot === 'string' && Object.prototype.hasOwnProperty.call(slots, slot) ? slots[slot] : null;
+}
+
+// Turns a validated "YYYY-MM-DD" into the friendly "Sat, 3 Oct 2026" style
+// used in emails — built here on the server, rather than trusting the
+// display text the browser sends. Formatted in UTC because the date was
+// built as a UTC midnight, so the calendar day can never shift.
+function displayDate(dateStr) {
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, mo - 1, d)).toLocaleDateString('en-NZ', {
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'
+  });
+}
+
+function isValidBookingDate(dateStr) {
+  if (typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+  const parts = dateStr.split('-').map(Number);
+  const [y, mo, d] = parts;
+  if (parts.length !== 3 || !Number.isInteger(y) || !Number.isInteger(mo) || !Number.isInteger(d)) return false;
+  // Built directly from the numeric parts (not string-parsed) so there is
+  // no timezone interpretation of dateStr at all — it's treated purely as
+  // a calendar date, compared against the NZ-anchored bounds in the same frame.
+  const chosen = new Date(Date.UTC(y, mo - 1, d, 0, 0, 0));
+  if (isNaN(chosen.getTime())) return false;
+  if (chosen < minBookableDateNZ()) return false;
+  if (chosen > maxBookableDateNZ()) return false;
+  return true;
+}
+
+exports.handler = async (event) => {
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: JSON.stringify({ error: 'Method not allowed' }) };
+  }
+
+  const clientIp = clientIpFrom(event);
+  if (isRateLimited(clientIp)) {
+    return { statusCode: 429, body: JSON.stringify({ error: 'Too many requests. Please wait a few minutes and try again.' }) };
+  }
+
+  const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+  // SITE_URL is set by you in Netlify env vars (e.g. https://theoldflourshop.netlify.app).
+  // We build success/cancel URLs from this ourselves rather than trusting
+  // whatever origin the browser claims to be — otherwise a request could
+  // ask Stripe to redirect a completed payment to an attacker's domain.
+  const SITE_URL = process.env.SITE_URL;
+
+  if (!STRIPE_SECRET_KEY || !SITE_URL) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Server is not fully configured yet. STRIPE_SECRET_KEY and SITE_URL must both be set in Netlify environment variables.' })
+    };
+  }
+
+  let order;
+  try {
+    order = JSON.parse(event.body);
+  } catch (e) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid request.' }) };
+  }
+  // Must be a plain object — not null, a list, a number or a string.
+  if (!order || typeof order !== 'object' || Array.isArray(order)) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid request.' }) };
+  }
+  // Every text field is forced to be text. Anything else (a number, a list,
+  // an object) becomes '' and then fails the normal checks below with a
+  // clear message, rather than crashing the function.
+  const asText = v => (typeof v === 'string' ? v : '');
+  for (const field of ['fulfil', 'suburb', 'address', 'date', 'fname', 'lname', 'email', 'phone']) {
+    order[field] = asText(order[field]);
+  }
+  order.fname = order.fname.trim();
+  order.lname = order.lname.trim();
+  order.email = order.email.trim();
+  order.phone = order.phone.trim();
+
+  // ---- 1 & 2 & 3. look up every cart line by ID; validate quantity; only honour "no added gluten" where actually offered ----
+  if (!Array.isArray(order.items) || order.items.length === 0) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Your cart is empty. Please add a cake before checking out.' }) };
+  }
+  if (order.items.length > MAX_CART_ITEMS) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Too many different cakes in one order. Please contact us directly for large orders.' }) };
+  }
+
+  const resolvedItems = [];
+  for (const rawItem of order.items) {
+    // hasOwnProperty, not just CAKES[id]: plain lookups also find built-in
+    // names every object has (like "toString" or "__proto__"), which would
+    // otherwise pass as a "cake" with no price.
+    const cakeId = rawItem && typeof rawItem.cakeId === 'string' ? rawItem.cakeId : '';
+    const cake = Object.prototype.hasOwnProperty.call(CAKES, cakeId) ? CAKES[cakeId] : null;
+    if (!cake) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'One of the cakes in your cart is not recognised. Please refresh and try again.' }) };
+    }
+    const qty = Math.floor(Number(rawItem.quantity));
+    if (!Number.isFinite(qty) || qty < 1 || qty > MAX_ITEM_QTY) {
+      return { statusCode: 400, body: JSON.stringify({ error: `Please choose a quantity between 1 and ${MAX_ITEM_QTY} for each cake.` }) };
+    }
+    const glutenFree = !!(rawItem.glutenFree && cake.glutenFreeOption);
+    // The surcharge is added directly to the resolved price here, once —
+    // everything downstream (the Stripe line item amount) reads from
+    // this same value, so there's no separate place that could forget
+    // to add it.
+    const unitPrice = cake.price + (glutenFree ? GF_SURCHARGE : 0);
+    const messages = cleanCakeMessages(cake, rawItem.messages, qty);
+    resolvedItems.push({ id: rawItem.cakeId, name: cake.name, price: unitPrice, qty, glutenFree, messages });
+  }
+
+  // ---- 4. validate fulfilment + look up delivery fee server-side ----
+  if (order.fulfil !== 'pickup' && order.fulfil !== 'delivery') {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Please choose pickup or delivery.' }) };
+  }
+
+  const timeWindow = timeWindowFor(order.fulfil, order.timeSlot);
+  if (!timeWindow) {
+    return { statusCode: 400, body: JSON.stringify({ error: order.fulfil === 'delivery'
+      ? 'Please choose a delivery time: 8am – 10am or 10am – 12pm.'
+      : 'Please choose a pickup time.' }) };
+  }
+
+  let deliveryFeeCents = 0;
+  let suburb = '';
+  if (order.fulfil === 'delivery') {
+    suburb = typeof order.suburb === 'string' ? order.suburb.trim() : '';
+    const fee = findDeliveryFee(suburb);
+    if (fee === null) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'That suburb is outside our delivery area. Please choose one from the list.' }) };
+    }
+    deliveryFeeCents = fee * 100;
+
+    if (order.address.trim().length > MAX_ADDRESS_LENGTH) {
+      return { statusCode: 400, body: JSON.stringify({ error: `Please keep the delivery address under ${MAX_ADDRESS_LENGTH} characters.` }) };
+    }
+    if (order.address.trim().length < 4) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'Please enter a delivery address.' }) };
+    }
+  }
+
+  // ---- 5. validate date: real calendar date, at least 48 hours out, not more than 6 months out, not a blackout date ----
+  if (!isValidBookingDate(order.date)) {
+    // Say which way it's wrong — most often it's a date that was fine
+    // when chosen but has since slipped inside the 48 hours (the website
+    // normally catches this first; this is the backstop).
+    const tooSoon = /^\d{4}-\d{2}-\d{2}$/.test(order.date)
+      && new Date(order.date + 'T00:00:00Z') < minBookableDateNZ();
+    const error = tooSoon
+      ? 'That date is now inside our 48-hour notice window. Please go back and choose a later date.'
+      : `Please choose a valid date between 48 hours and ${MAX_BOOKING_MONTHS_AHEAD} months from now.`;
+    return { statusCode: 400, body: JSON.stringify({ error }) };
+  }
+  if (BLACKOUT_DATES.includes(order.date)) {
+    return { statusCode: 400, body: JSON.stringify({ error: "We're closed on that date. Please choose another." }) };
+  }
+  // Special days (SPECIAL_DAYS above): pickup only, and/or fewer time windows.
+  const sd = specialDay(order.date);
+  if (sd) {
+    if (order.fulfil === 'delivery' && sd.delivery === false) {
+      return { statusCode: 400, body: JSON.stringify({ error: `Delivery isn't available on ${longDate(order.date)}, pickup only. Please go back and choose pickup or another date.` }) };
+    }
+    const allowed = order.fulfil === 'delivery' ? sd.deliverySlots : sd.pickupSlots;
+    if (allowed && !allowed.includes(order.timeSlot)) {
+      const offered = allowed.map(k => TIME_SLOTS[order.fulfil][k]).join(' or ');
+      return { statusCode: 400, body: JSON.stringify({ error: `On ${longDate(order.date)} we can only offer ${order.fulfil} ${offered}. Please go back and choose one of those times.` }) };
+    }
+  }
+
+  // ---- 6. validate customer details ----
+  if (order.fname.length > MAX_NAME_LENGTH || order.lname.length > MAX_NAME_LENGTH) {
+    return { statusCode: 400, body: JSON.stringify({ error: `Please keep your first and last name under ${MAX_NAME_LENGTH} characters each.` }) };
+  }
+  if (order.email.length > MAX_EMAIL_LENGTH || order.phone.length > MAX_PHONE_LENGTH) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Please check your email address and phone number.' }) };
+  }
+  if (!order.fname || !order.lname) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Please enter your first and last name.' }) };
+  }
+  if (!isValidEmail(order.email)) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Please enter a valid email address.' }) };
+  }
+  if (!isReasonablePhone(order.phone)) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Please enter a valid phone number.' }) };
+  }
+
+  // ---- build the Stripe Checkout Session request ----
+  const params = new URLSearchParams();
+  params.append('mode', 'payment');
+  // Server-built redirect URLs, not client-supplied ones (see SITE_URL note above).
+  params.append('success_url', `${SITE_URL}/?order=success&session_id={CHECKOUT_SESSION_ID}`);
+  params.append('cancel_url', `${SITE_URL}/?order=cancelled`);
+  params.append('customer_email', order.email);
+  params.append('expires_at', String(Math.floor(Date.now() / 1000) + CHECKOUT_WINDOW_MINUTES * 60));
+
+  let lineIndex = 0;
+  let itemsSubtotalCents = 0;
+  for (const item of resolvedItems) {
+    const unitAmount = Math.round(item.price * 100);
+    itemsSubtotalCents += unitAmount * item.qty;
+    const displayName = item.glutenFree ? `${item.name} (no added gluten)` : item.name;
+    params.append(`line_items[${lineIndex}][price_data][currency]`, 'nzd');
+    params.append(`line_items[${lineIndex}][price_data][product_data][name]`, displayName);
+    params.append(`line_items[${lineIndex}][price_data][unit_amount]`, String(unitAmount));
+    params.append(`line_items[${lineIndex}][quantity]`, String(item.qty));
+    lineIndex++;
+  }
+
+  if (deliveryFeeCents > 0) {
+    params.append(`line_items[${lineIndex}][price_data][currency]`, 'nzd');
+    params.append(`line_items[${lineIndex}][price_data][product_data][name]`, `Delivery — ${suburb}`);
+    params.append(`line_items[${lineIndex}][price_data][unit_amount]`, String(deliveryFeeCents));
+    params.append(`line_items[${lineIndex}][quantity]`, '1');
+    lineIndex++;
+  }
+
+  // Card surcharge — calculated on the true pre-surcharge total (cakes +
+  // delivery), never on itself, and always as its own clearly labelled
+  // line item so it's genuinely disclosed to the customer before they
+  // pay, not folded invisibly into another price.
+  const cardSurchargeCents = Math.round((itemsSubtotalCents + deliveryFeeCents) * CARD_SURCHARGE_RATE);
+  // The "no added gluten" extras, kept separately for the email breakdown.
+  const gfExtraCents = resolvedItems.reduce((sum, i) => sum + (i.glutenFree ? Math.round(GF_SURCHARGE * 100) * i.qty : 0), 0);
+  if (cardSurchargeCents > 0) {
+    params.append(`line_items[${lineIndex}][price_data][currency]`, 'nzd');
+    params.append(`line_items[${lineIndex}][price_data][product_data][name]`, `Credit Card Surcharge (${(CARD_SURCHARGE_RATE * 100).toFixed(1)}%)`);
+    params.append(`line_items[${lineIndex}][price_data][unit_amount]`, String(cardSurchargeCents));
+    params.append(`line_items[${lineIndex}][quantity]`, '1');
+    lineIndex++;
+  }
+
+  // A short human-readable summary for display in emails, Airtable and the
+  // confirmation screen — e.g. "2x Lemon Mousse Cake (no added gluten), 1x Tiramisu Cake".
+  const orderSummary = resolvedItems
+    .map(i => `${i.qty}x ${i.name}${i.glutenFree ? ' (no added gluten)' : ''}`)
+    .join(', ');
+
+  // All piped messages in one readable line for the emails and Airtable,
+  // e.g. 'Chocolate Celebration Cake: "Happy 30th Sarah" | Lemon Lover
+  // Cake: "Congrats Mum"'. With more than one of the same cake, each is
+  // numbered ("Chocolate Celebration Cake 1: ..., ... 2: ...").
+  // The no-added-gluten version is named too, so two lines of the same
+  // cake (one standard, one without added gluten) can't be confused.
+  const cakeMessages = [];
+  resolvedItems.forEach(item => {
+    item.messages.forEach((msg, i) => {
+      if (msg) cakeMessages.push(`${item.name}${item.glutenFree ? ' (no added gluten)' : ''}${item.qty > 1 ? ` ${i + 1}` : ''}: "${msg}"`);
+    });
+  });
+  const cakeMessageText = cakeMessages.join(' | ');
+  // Stripe only stores 500 characters per detail, so the messages are
+  // split across several numbered details (cake_message, cake_message_1,
+  // cake_message_2, ...) and joined back together by the webhook. 12
+  // pieces hold about 5,800 characters, more than the largest order the
+  // website allows. Only an order beyond that (impossible from the
+  // website itself) is stopped, rather than cutting messages off.
+  const MESSAGE_CHUNK = 490, MESSAGE_MAX_CHUNKS = 12;
+  if (cakeMessageText.length > MESSAGE_CHUNK * MESSAGE_MAX_CHUNKS) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'That\'s more cake messages than we can take online in one order. Please contact us and we\'ll sort it out directly.' }) };
+  }
+
+  // Order details attached as metadata so they show up in the Stripe Dashboard
+  // and in the webhook payload. These are for display only — never used to
+  // determine price.
+  const metadata = {
+    order_summary: orderSummary,
+    item_count: String(resolvedItems.reduce((n, i) => n + i.qty, 0)),
+    fulfilment: order.fulfil,
+    suburb: suburb,
+    delivery_address: order.fulfil === 'delivery' ? (order.address || '').trim() : '',
+    // Both built server-side from validated values (see displayDate and
+    // TIME_SLOTS above) — the browser's own dateDisplay is ignored.
+    pickup_delivery_date: displayDate(order.date),
+    // order.date is already validated as a plain YYYY-MM-DD string by
+    // isValidBookingDate() above — kept separately from the human-
+    // readable version above because Airtable's Date field type needs
+    // this exact ISO format to parse correctly, while the emails want
+    // the friendly "Sat, 13 Sept 2026" style instead.
+    pickup_delivery_date_iso: order.date,
+    time_window: timeWindow,
+    customer_name: `${order.fname} ${order.lname}`,
+    phone: order.phone || '',
+    cake_message: cakeMessageText.slice(0, MESSAGE_CHUNK), // any remainder goes in cake_message_1, _2 ... below
+    // Price breakdown (in cents) so the confirmation email can show how
+    // the total is made up. Display only — the charge itself comes from
+    // the line items above.
+    price_cakes_cents: String(itemsSubtotalCents - gfExtraCents),
+    price_gf_cents: String(gfExtraCents),
+    price_delivery_cents: String(deliveryFeeCents),
+    price_surcharge_cents: String(cardSurchargeCents)
+  };
+  // Itemised receipt for the emails: one entry per cart line —
+  // [cake name, quantity, price each in cents (before any gluten-free
+  // extra), gluten-free extra each in cents, [piped messages]]. Stripe
+  // stores at most 500 characters per detail, so it's split across up to
+  // 20 numbered details (receipt_0, receipt_1, ...) and joined back
+  // together by the webhook. If a (very large) order wouldn't fit, it's
+  // simply left out and the emails show the order without the itemised
+  // lines, as before.
+  const receiptJson = JSON.stringify(resolvedItems.map(i => {
+    const gfEach = i.glutenFree ? Math.round(GF_SURCHARGE * 100) : 0;
+    const msgs = i.messages.slice();
+    while (msgs.length && !msgs[msgs.length - 1]) msgs.pop();   // drop trailing blanks
+    return [i.name, i.qty, Math.round(i.price * 100) - gfEach, gfEach, msgs];
+  }));
+  // Up to 20 receipt pieces (9,000 characters) — enough for the largest
+  // order the website allows, messages included.
+  const RECEIPT_CHUNK = 450, RECEIPT_MAX_CHUNKS = 20;
+  if (receiptJson.length <= RECEIPT_CHUNK * RECEIPT_MAX_CHUNKS) {
+    for (let k = 0; k * RECEIPT_CHUNK < receiptJson.length; k++) {
+      metadata[`receipt_${k}`] = receiptJson.slice(k * RECEIPT_CHUNK, (k + 1) * RECEIPT_CHUNK);
+    }
+  }
+  // The rest of the cake messages, if they didn't fit in cake_message.
+  for (let k = 1; k * MESSAGE_CHUNK < cakeMessageText.length; k++) {
+    metadata[`cake_message_${k}`] = cakeMessageText.slice(k * MESSAGE_CHUNK, (k + 1) * MESSAGE_CHUNK);
+  }
+  // Stripe allows at most 50 details per payment. The most this can reach
+  // is 15 standard + 11 extra message pieces + 20 receipt pieces = 46.
+
+  Object.entries(metadata).forEach(([key, value]) => {
+    params.append(`metadata[${key}]`, String(value).slice(0, 490)); // Stripe metadata values cap at 500 chars
+  });
+
+  try {
+    const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${STRIPE_SECRET_KEY}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: params.toString()
+    });
+
+    const session = await stripeRes.json();
+
+    if (!stripeRes.ok) {
+      console.error('Stripe error:', session);
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: session.error?.message || 'Stripe could not start this payment.' })
+      };
+    }
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ url: session.url })
+    };
+  } catch (err) {
+    console.error('Checkout session error:', err);
+    return { statusCode: 500, body: JSON.stringify({ error: 'Could not reach Stripe. Please try again.' }) };
+  }
+};

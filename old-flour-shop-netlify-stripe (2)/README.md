@@ -1,0 +1,955 @@
+# The Old Flour Shop — deploying with real Stripe payments
+
+This package contains everything needed to put the site live on Netlify
+with real, securely-processed card payments through Stripe.
+
+```
+index.html                          the website
+images/                              all photos (must stay next to the HTML file)
+netlify/functions/                   three serverless functions (see below)
+netlify.toml                         tells Netlify where the functions live, plus the site's security settings
+robots.txt                           tells search engines they can crawl the site
+sitemap.xml                          lists the page for search engines
+```
+
+The three functions:
+- **create-checkout-session.js** — starts a payment. Looks up the real
+  cake price and delivery fee itself (never trusts the browser for
+  money amounts) and creates a Stripe Checkout session.
+- **verify-checkout-session.js** — called when the customer returns
+  from Stripe, to confirm with Stripe directly that the payment
+  actually succeeded before showing a success message.
+- **stripe-webhook.js** — Stripe calls this directly the moment a
+  payment succeeds, and it sends the order-confirmation emails. This
+  is the authoritative trigger for "an order happened," independent
+  of whether the customer's browser makes it back to your site.
+
+## How the site works now (current as of 29 September 2026)
+
+**This section is the source of truth.** Further down, the sections
+headed "History" record earlier rounds of changes; some of what they
+describe has since been changed or removed. Where they disagree with
+this section, this section is right.
+
+**Menu:** 12 cakes, each a single flat price. The no-added-gluten
+option (+$7.50) is offered on Vegan Chocolate Cake, Raspberry Cheesecake,
+Lemon Mousse Cake, Passionfruit Cheesecake, Boysenberry Cheesecake and
+Key Lime Pie (`glutenFreeOption: true`). Vegan Chocolate Cake ($160)
+was added 14 October 2026. Menu order (rows of three): chocolate cakes,
+cheesecakes, lemon & lime, then Tiramisu, Raspberry Crumble and
+Orange & Almond. Orange & Almond Cake and Chocolate Marquise
+are tagged "Made Without Added Gluten" and have no checkbox.
+Prices changed 14 October 2026: Chocolate Celebration Cake $145,
+Lemon Lover Cake $135, Tiramisu Cake $130.
+
+**Cake messages:** only the Chocolate Celebration Cake, Vegan Chocolate
+Cake and Lemon Lover Cake take a piped message (tag "Custom Message Available" in
+`index.html`, `cakeMessage: true` in `create-checkout-session.js`).
+Each of those cakes gets its own optional message box in the cart,
+up to 30 characters. Emoji and symbols are removed as they're typed;
+letters (including macrons and accents), numbers and everyday
+punctuation are allowed. The server applies the same rules and ignores
+messages sent for any other cake. All messages reach the emails and
+Airtable as one line, e.g. `Chocolate Celebration Cake: "Happy 30th
+Sarah" | Lemon Lover Cake: "Congrats Mum"`.
+
+**No allergies box.** It was removed on purpose. Allergen information
+is shown in the menu's "Allergen information" section and repeated in
+the customer's confirmation email, asking anyone with a serious allergy
+to contact the bakery.
+
+**Checkout checks (website and server both):** email must look complete
+(e.g. `name@gmail.com`, not `name@gmail`); first and last name up to 100
+characters each; delivery address up to 300; phone 7 to 15 digits. The
+earliest bookable date is decided in New Zealand time; Christmas Day and
+New Year's Day are blocked (`BLACKOUT_DATES`).
+
+**Stripe's payment page expires after 35 minutes** (`CHECKOUT_WINDOW_MINUTES`,
+in both `index.html` and `create-checkout-session.js`), and the chosen
+date must still be at least 48 hours away when it expires — so nobody
+can leave the payment page open and pay once their date is too close.
+If a customer's page expires, they come back to the site and their
+order is still filled in. Because the earliest allowed date moves on
+as the clock does (it rolls forward a day each evening), the website
+rechecks the chosen date when the customer continues to the review
+step and again when they press pay; if it's no longer allowed, they're
+taken back to the date step with an explanation, details kept.
+
+**Order confirmed screen** (after paying) shows what was ordered, the
+amount paid, and the pickup or delivery date — e.g. "Pickup from our
+Oneroa bakery on Sat, 17 Oct 2026, 10am – 12pm" — taken from
+Stripe's record of the order, so customers can check their date
+straight away.
+
+**Page structure for screen readers:** everything between the header
+and footer sits in a `<main>` area, and the footer's "Shop" and "Visit"
+headings are level-2 headings (styled exactly as before).
+
+**Cake photos come in three sizes.** Each cake has its original photo
+(e.g. `images/key-lime-pie.webp`, 1200×900) plus two smaller copies
+next to it: `images/key-lime-pie-640.webp` and
+`images/key-lime-pie-960.webp`. Each visitor's browser downloads only
+the size their screen needs (laptops usually the 640, high-density
+phones the 960), which roughly halves what a laptop downloads and cuts
+about a quarter off phones. **When you add or replace a cake photo, make
+all three:** export the photo as WebP at 1200, 960 and 640 pixels wide
+(4:3, e.g. with squoosh.app), name them as above, and put all three in
+`/images`. If the small copies are missing, those visitors see a broken
+image. The cart thumbnails use the 640 copy.
+
+**Safety net:** if one of the smaller copies is ever missing, the page
+automatically shows the full-size photo instead of a broken image (it's
+just a bit slower to load on phones). So a forgotten copy is never
+visible to customers, but it's still worth adding all three sizes.
+
+**Phone/tablet menu:** below 861px wide the header links (Cakes, How it
+works, Visit) are hidden, so a round menu button (☰) next to "Order a
+cake" opens them as a short list that drops down over the page. It
+closes when a section is picked, on Escape, when tapping elsewhere, when
+the visitor starts scrolling (swipe, wheel or trackpad), or if the screen
+turns wide. On
+narrow phones (400px and under) the header is slightly tighter so "The
+Old Flour Shop" stays on one line. Desktop is unchanged.
+
+**Money is shown with thousands separators** ($1,740.00) on the website,
+in the emails and in the staff text, matching Stripe. Airtable's "Amount
+Paid" still receives a plain number. In the order docket, prices never
+break across lines on narrow phones (the description wraps instead).
+
+**Back button:** each step of the order form has its own browser-history
+entry, so on a phone, Back goes to the previous step, Back on step 1
+closes the form, and only the next Back leaves the site. Closing the
+form with ✕, Escape or Done tidies those entries away again.
+
+**Coming back from Stripe without paying** (Stripe's back arrow) takes
+the customer straight to "Review & pay", with a note that they haven't
+been charged and their order is saved. Every step's checks still run
+on the way, so if something no longer passes (e.g. their date is now
+inside the 48 hours) it stops at that step and explains why.
+
+**Jump links** (header, "See the cake menu", footer) stop just below the
+sticky header, so each section's heading is visible.
+
+**Reduce motion:** visitors who've turned on "reduce motion" on their
+device get no smooth scrolling, photo zoom, button lift or pop-in
+animation.
+
+The shopfront photo in "Find us" now waits until the visitor scrolls
+near it before downloading, and the delivery-address box tells phones
+to autofill just the street line (suburb is chosen from the list).
+
+**Prices are labelled NZD** on every cake card, in a line under the
+menu heading, and on the order total ("TOTAL (NZD)").
+
+**Time limit:** Netlify stops a function after 10 seconds. The webhook
+gives each outside service only part of that time (Airtable 2.5s per
+step, then the emails and staff text share what's left) and always
+replies to Stripe by about 8.5 seconds, so it's never cut off mid-way.
+
+**Same payment arriving twice at once:** right after saving the
+Airtable row, the webhook checks for another row for the same payment.
+If there is one, only the earliest-saved row is kept and the later copy
+removes its own, so each order is one row, two emails and one text.
+
+**Large message orders:** cake messages are stored with the payment in
+several pieces (`cake_message`, `cake_message_1`, ...) and joined back
+together for the emails and Airtable, so even the largest order the
+website allows (dozens of messaged cakes) goes through.
+
+**Repeats and retries (`stripe-webhook.js`):** if anything temporary
+goes wrong while processing a paid order (Airtable or the email service
+not responding), Stripe is asked to try again. Every step is safe to
+repeat: the Airtable row is only created if it isn't there already,
+each email carries a fixed key so Resend never sends it twice (Resend
+remembers these for 24 hours), and the staff text only goes out once.
+If Airtable can't be searched, the order waits for Stripe's retry
+rather than risk being saved twice.
+
+**At Stripe:** one line per cake (gluten-free versions named
+"(no added gluten)" and priced with the extra included), a delivery
+line if delivering, and a "Credit Card Surcharge (1.8%)" line.
+
+**After payment (`stripe-webhook.js`), in this order:**
+1. The order is saved to Airtable.
+2. The bakery gets an order email: the total in the heading, an
+   itemised receipt, then the customer and delivery details. Hitting
+   Reply on it writes straight to the customer.
+3. The customer gets a confirmation email with the same itemised
+   receipt, pickup or delivery details, and the allergen note. Their
+   replies go to theoldflourshop@gmail.com.
+
+**The itemised receipt** (in both emails) lists each cake with its
+quantity and price ("$145.00 each" when more than one), any cake
+messages under the cake, a "+ No added gluten" row where chosen, then
+Delivery (with suburb), Credit Card Surcharge and Total paid. The
+checkout function stores the lines in the payment's details
+(`receipt_0`, `receipt_1`, ...); the email only uses them if they add up
+exactly to what Stripe charged, and otherwise shows the simpler summary
+and total.
+
+See "If something goes wrong saving an order" at the end for what
+happens when Airtable or the email service has a problem.
+
+**Staff text alerts (TNZ).** After the order is saved and both emails
+have gone, a short text is sent to the staff phone (+64273399264), e.g.
+*"New order: 1x Key Lime Pie (no added gluten). Pickup Sat, 3 Oct 2026.
+Sarah Jones 021 123 4567. $137.50 paid"*. Customers are never texted.
+If Airtable refused the order, the text starts "NOT IN AIRTABLE - add by
+hand." A texting problem never affects the order itself. (ClickSend was
+tried earlier and removed.)
+
+**Security settings** live in `netlify.toml`. They only allow the site
+to load its own files plus Google Fonts. If you ever add something
+from another website (an Instagram feed, Google Analytics, an embedded
+map), it must be added to the `Content-Security-Policy` line there too,
+or it won't load.
+
+## What changed from the demo version
+
+The old "Payment" step that asked for a card number directly has been
+replaced with a **"Review & pay"** step. Clicking through now sends the
+order to Netlify's servers, which validate it, create a real Stripe
+Checkout session, and redirect the customer to Stripe's own secure
+payment page. Card details are typed on Stripe's page, never on yours —
+you never see or store card numbers at all.
+
+After payment, Stripe sends the customer back to your site, which
+verifies the payment really happened (see verify-checkout-session.js
+above) before showing the "Order placed!" confirmation.
+
+## ⚠️ Keeping prices in sync — read this before changing the menu
+`create-checkout-session.js` contains its own copy of every cake's `id`
+and `price`, and the delivery suburbs/fees. This is deliberate: the
+server must calculate the real price itself rather than trusting
+whatever the browser sends, otherwise anyone could tamper with the
+request and pay $1 for a cake. But it means **this site has two places
+where the menu lives** — `index.html`'s `CAKES`/`DELIVERY_ZONES`
+arrays (what customers see) and the matching object near the top of
+`create-checkout-session.js` (what they're actually charged).
+
+**Whenever you add a cake, remove a cake, or change a price or
+delivery fee, update both files.** If you only update `index.html`,
+the website will show a new price but customers will still be charged
+the old one — worth checking after every menu change.
+
+The same applies to these settings, which also exist in both files and
+must match: `GF_SURCHARGE` (no-added-gluten extra), `CARD_SURCHARGE_RATE`
+(1.8%), `BLACKOUT_DATES` (closed days), `CUTOFF_HOURS` (notice needed),
+`CHECKOUT_WINDOW_MINUTES` (how long the payment page stays open),
+`MAX_BOOKING_MONTHS_AHEAD`, which cakes offer gluten-free and which take
+a cake message, and the cake-message character rules.
+
+**Also typed into the page text** (so they don't change by themselves
+when the settings above change — search `index.html` for them):
+"+$7.50" (several places), "1.8%" (How it works, step 3), "from $15"
+(delivery option), "48 hours" and "7:30am to 3pm".
+
+## One-time setup
+
+### 1. Create a Stripe account
+Sign up free at **stripe.com**. You'll get two keys under
+**Developers → API keys**: a *Publishable* key and a *Secret* key. This
+project only needs the **Secret** key (starts with `sk_test_...` while
+testing, `sk_live_...` once you're ready for real payments).
+
+### 2. Deploy to Netlify
+The easiest reliable path:
+1. Put this whole folder into a new **GitHub repository**
+2. In Netlify: **Add new site → Import an existing project → connect
+   that GitHub repo**
+3. Leave the build settings as-is (there's no build step — it's already
+   built) and deploy
+
+*(Drag-and-drop deploy on Netlify's dashboard only publishes static
+files — it will **not** pick up the `netlify/functions` folder. Either
+the GitHub method above, or the `netlify` CLI tool run from your own
+computer, are the two ways that actually deploy the functions.)*
+
+### 3. Add your environment variables to Netlify
+In your new Netlify site: **Site configuration → Environment
+variables → Add a variable** — add all of these:
+
+| Key | Value |
+|---|---|
+| `STRIPE_SECRET_KEY` | your Stripe secret key from step 1 |
+| `SITE_URL` | `https://www.theoldflourshop.co.nz` (no trailing slash) |
+
+`SITE_URL` matters for security, not just convenience — it's what the
+server uses to build the redirect-back-to-your-site URL after payment,
+rather than trusting whatever the browser claims its own address is.
+Use your real domain here (below), not the temporary `*.netlify.app`
+address, so it's correct from the start.
+
+Then trigger a re-deploy (Netlify → Deploys → Trigger deploy) so the
+functions pick up the new variables.
+
+### 3b. Connect your domain (theoldflourshop.co.nz, bought via Crazy Domains)
+Netlify will first give your site a temporary address like
+`something-random.netlify.app`. To use your real domain instead:
+
+1. In Netlify: **Site configuration → Domain management → Add a
+   domain** → enter `theoldflourshop.co.nz`
+2. Netlify will show you DNS records to add — usually an **A record**
+   pointing to Netlify's load balancer IP, plus a **CNAME record** for
+   the `www` version. Netlify displays the exact values to use.
+3. Log into your **Crazy Domains** account → find
+   `theoldflourshop.co.nz` → **DNS / Nameservers management** → add
+   those same records there.
+4. DNS changes can take anywhere from a few minutes to ~24 hours to
+   take effect. Netlify's domain page will show a green checkmark once
+   it detects the domain correctly pointing at them.
+5. Netlify issues a **free SSL certificate** automatically once the
+   domain is verified — no extra step needed for `https://` to work.
+
+*(Known quirk: some users report Crazy Domains' free DNS hosting
+doesn't support TXT records, which you may need later — e.g. to verify
+a custom sending domain in Resend for branded confirmation emails. If
+you hit that limitation, Netlify can manage your DNS directly instead
+— point Crazy Domains' nameservers at Netlify's, and manage all
+records from the Netlify dashboard going forward.)*
+
+Once the domain is connected, double check `SITE_URL` above still
+exactly matches whichever version of the domain you actually land on
+(`https://www.theoldflourshop.co.nz` vs `https://theoldflourshop.co.nz`
+without the `www` — Netlify's domain settings show you which one is
+primary).
+
+### 4. Test it
+Use Stripe's test card `4242 4242 4242 4242`, any future expiry date,
+any 3-digit CVC. A successful test payment will show up in your Stripe
+Dashboard under **Payments** (make sure you're viewing "test mode",
+toggle top-right).
+
+### 5. Go live
+Swap the `STRIPE_SECRET_KEY` environment variable to your **live**
+secret key (`sk_live_...`) once you're ready to take real payments,
+and re-deploy.
+
+### 6. Tell Google the site exists
+Once live at your real domain, submit it in **Google Search
+Console** (search.google.com/search-console — free):
+1. Add your property: `https://www.theoldflourshop.co.nz`
+2. Verify ownership (Search Console gives a few options — DNS TXT
+   record via Crazy Domains, or an HTML file upload, are the usual
+   paths)
+3. Under **Sitemaps**, submit: `sitemap.xml`
+
+This isn't required for Google to eventually find the site, but it
+meaningfully speeds up indexing rather than waiting for it to be
+discovered on its own.
+
+## Ordering more than one cake
+
+Customers can add multiple cakes to their order in one checkout — either
+several of the same cake, or a mix of different ones. Step 1 of the order
+flow is a cart: each cake shows a quantity stepper (+/−) and a remove
+link, plus a dropdown to add another cake before moving on.
+
+This is enforced server-side too, not just in the browser: the checkout
+function validates every cake ID in the cart against the same price
+allowlist, caps quantities at a sane maximum, and builds one Stripe line
+item per cake type (each with its correct quantity), plus a single
+delivery line item if applicable — so a cart of 2x Lemon Mousse Cake +
+1x Tiramisu Cake shows as three clean, correctly priced lines on
+Stripe's payment page, not one lump sum.
+
+## What's in the Stripe payment
+Each cake in the cart becomes its own line item (with its own quantity),
+and — if delivery was chosen — the delivery fee is added as one more
+line item, and the Credit Card Surcharge (1.8% of cakes plus delivery)
+is its own line item too. The customer's full order details (a
+plain-text summary of everything in the cart, pickup/delivery date,
+time window, address if delivering, any cake messages, phone number,
+and the price breakdown used in the confirmation email) are attached
+to the payment as **metadata**, visible when you open that payment in
+your Stripe Dashboard.
+
+## Getting automatic order emails
+
+By default, Stripe just logs a successful payment in your Dashboard —
+nothing gets emailed to anyone. This package includes a second function
+that fixes that: the moment a payment succeeds, Stripe notifies it
+directly, and it sends **two emails**:
+1. To the **bakery** — full order details (cakes, date, pickup/delivery,
+   address, cake messages, phone, email). Hitting Reply writes straight
+   to the customer.
+2. To the **customer** — a branded confirmation of their order with the
+   same key details, a price breakdown, the allergen note, and your
+   contact info if they need to make a change. Their replies go to
+   theoldflourshop@gmail.com.
+
+This uses **Resend** (a straightforward email-sending service with a
+generous free tier) to actually send both.
+
+### 1. Create a free Resend account
+Sign up at **resend.com** → **API Keys** → create one → copy it.
+
+### 2. Add it to Netlify
+**Site configuration → Environment variables → Add a variable**
+- Key: `RESEND_API_KEY`
+- Value: the key from step 1
+
+*(Optional) also add `BAKERY_NOTIFICATION_EMAIL` if you want order
+emails to go somewhere other than theoldflourshop@gmail.com.*
+
+### 3. Tell Stripe where to send the "payment succeeded" signal
+In your **Stripe Dashboard → Developers → Webhooks → Add endpoint**:
+- Endpoint URL: `https://YOUR-SITE.netlify.app/.netlify/functions/stripe-webhook`
+- Events to listen for: `checkout.session.completed` **and**
+  `checkout.session.async_payment_succeeded`
+
+*(The second event only matters if you ever switch on a slower payment
+type in Stripe, such as a bank debit. Those complete checkout before the
+money arrives, so the order is only processed once Stripe confirms the
+payment has cleared. Card payments always use the first event.)*
+
+After creating it, Stripe shows a **Signing secret** (starts with
+`whsec_...`). Add that in Netlify too:
+- Key: `STRIPE_WEBHOOK_SECRET`
+- Value: that signing secret
+
+Re-deploy after adding these so the function picks them up.
+
+### 4. Test it
+Make a test payment (card `4242 4242 4242 4242`, using a real email
+address you can check). Within a few seconds the bakery address should
+get an order notification, and the email you paid with should get a
+confirmation. If not, check **Stripe Dashboard → Webhooks →
+[your endpoint] → recent attempts** — it shows exactly what was sent
+and any error returned, which is the fastest way to debug this if
+something's not quite right.
+
+### About the "from" address
+Emails send from `orders@theoldflourshop.co.nz`, using your own domain
+verified in Resend. That address can send but can't receive, which is
+why every email sets a separate reply address (see above). If the
+domain ever stops being verified in Resend, emails will stop sending,
+so keep the domain's DNS records in place.
+
+## Pickup and delivery time windows
+
+In step 2 the customer must choose a time window before they can continue:
+
+- **Pickup:** 8am – 10am, 10am – 12pm, or 12pm – 2pm
+- **Delivery:** 8am – 10am or 10am – 12pm (mornings only)
+
+The chosen window shows on the order docket, the order-confirmed screen,
+both emails, the **Time Window** column in Airtable, and the staff text
+(e.g. "Pickup Wed, 18 Nov 2026 12pm-2pm"). If a customer switches from
+pickup to delivery after picking 12pm – 2pm, the choice is cleared and
+they pick again.
+
+The server checks the window again before taking payment, so a 12pm – 2pm
+delivery (or any made-up window) is refused even if someone tampers with
+the page. **To change the windows**, edit `TIME_SLOTS` in both
+`index.html` and `netlify/functions/create-checkout-session.js`. The two
+lists must match.
+
+**Special days** (different options on particular dates): set in
+`SPECIAL_DAYS`, in both `index.html` and
+`netlify/functions/create-checkout-session.js` (the two lists must
+match). Currently:
+
+- **Saturday 28 November 2026:** pickup only, 8am – 10am or 10am – 12pm.
+  A customer who picks delivery and then that date sees "Delivery isn't
+  available on Saturday 28 November, pickup only" and can't continue
+  until they switch to pickup or change the date. The server refuses a
+  delivery, or a 12pm – 2pm pickup, on that date too.
+
+To add another, copy the line, e.g.
+`'2026-12-24': { delivery: false, pickupSlots: ['8-10', '10-12'] }` for
+Christmas Eve. Leave out `delivery: false` to keep delivery, or add
+`deliverySlots: ['8-10']` to limit delivery times. Old dates can stay in
+the list harmlessly.
+
+**Airtable sorting:** make **Time Window** a *Single select* column with
+the options in time order (8am – 10am, 10am – 12pm, 12pm – 2pm), so
+sorting puts 8am first. As plain text, Airtable sorts it alphabetically
+(10am, 12pm, 8am). The webhook sends orders to Airtable with
+`typecast` on, so if an option is missing or renamed Airtable adds it
+instead of refusing the order (if Airtable won't add it, the order
+still arrives by the "⚠️ NOT IN AIRTABLE" bakery email).
+
+## Tracking orders in Airtable
+
+By default you'd have to check Stripe or your email to see what's been
+ordered. This adds a row to an Airtable base the moment a payment
+succeeds, so staff can see all orders — including what's coming up
+this week — in one place, without touching Stripe.
+
+### 1. Create the Airtable base and table
+1. Sign up free at **airtable.com**
+2. Create a new base — call it something like "Cake Orders"
+3. In that base, create (or rename the default) table to **Orders**
+4. Add these fields to the table, with these **exact names** and types
+   (the "Cake" field will hold a summary like "2x Lemon Mousse Cake,
+   1x Tiramisu Cake" for multi-item orders — make it wide enough to
+   read comfortably):
+
+| Field name | Type |
+|---|---|
+| Name | Airtable's default first (primary) column — keep it called "Name" |
+| Cake | Single line text |
+| Fulfilment | Single line text |
+| Pickup/Delivery Date | Single line text |
+| Time Window | Single select (options in this order: 8am – 10am, 10am – 12pm, 12pm – 2pm) |
+| Suburb | Single line text |
+| Delivery Address | Single line text |
+| Customer Name | Single line text |
+| Phone | Phone number (or single line text) |
+| Email | Email |
+| Cake Message | Single line text |
+| Amount Paid | Currency or Number |
+| Stripe Session ID | Single line text |
+
+A **Created time** field (Airtable's built-in field type) is worth
+adding too, so you automatically get an "order placed at" timestamp
+without this code needing to send one.
+
+*(Field names must match exactly, including spacing and capitalisation.
+If even one of these columns is missing, renamed or deleted, **Airtable
+rejects the whole order**, not just that field. The site then still
+emails the order to the bakery, with "⚠️ NOT IN AIRTABLE" in the
+subject and a warning box, so nothing is lost, but the order has to be
+added to Airtable by hand. Extra columns of your own are fine. An old
+"Allergy Notes" column, from before the allergies box was removed, can
+stay: it's simply left empty now.)*
+
+### 2. Get your API credentials
+1. In Airtable: click your account icon → **Developer hub** → **Personal
+   access tokens** → create one
+2. Give it **read and write** access, scoped to the base you just made
+3. Copy the token (starts with `pat...`)
+4. Find your **Base ID**: open the base, click **Help → API
+   documentation** — the Base ID (starts with `app...`) is shown at
+   the top
+
+### 3. Add the credentials to Netlify
+**Site configuration → Environment variables → Add a variable**:
+
+| Key | Value |
+|---|---|
+| `AIRTABLE_API_KEY` | your personal access token from step 2 |
+| `AIRTABLE_BASE_ID` | your Base ID from step 2 |
+| `AIRTABLE_TABLE_NAME` | `Orders` (only needed if you named the table something else) |
+
+Re-deploy after adding these.
+
+### 4. Test it
+Make a test payment. Within a few seconds a new row should appear in
+your Airtable base. If it doesn't, check **Stripe Dashboard →
+Webhooks → [your endpoint] → recent attempts**, and also the function
+logs in Netlify (**Functions → stripe-webhook → real-time logs**) —
+Airtable errors (like a mismatched field name) get logged there. A
+bakery email with "⚠️ NOT IN AIRTABLE" in the subject also means
+Airtable's columns or access token don't match (see the note under
+the table above).
+
+### What staff actually see day-to-day
+Once orders are landing in Airtable, switch the table to **Calendar
+view** grouped by "Pickup/Delivery Date" — that gives a genuine
+week-at-a-glance view of what's due when, which is the main thing this
+was for. Sort/filter by Fulfilment to separate pickup from delivery
+orders, or by date to see what's coming up next.
+
+## History: an earlier round of fixes
+
+*(Kept as a record. Some of what's described here has since changed,
+for example the single order-message box and the allergies/notes box
+no longer exist. See "How the site works now" near the top for the
+current behaviour.)*
+
+- **The docket now updates live while typing**, not just after leaving a
+  step. Name, email, phone, delivery address, message, and notes were
+  previously only copied into the reviewable state when Continue was
+  clicked — so the docket could show a stale or blank value mid-typing.
+  Every keystroke now syncs state and refreshes the docket immediately.
+- **`setCartLineQty()` hardened to match `addToCart()`'s rigor.** Not
+  reachable through the UI today (the +/- buttons always pass clean
+  integers), but it previously had a real latent bug: an invalid quantity
+  (`NaN`) would have silently corrupted a cart line's quantity to `NaN`
+  rather than being caught. Now coerced/validated the same way
+  `resolveCartItem()` already does everywhere else.
+- **Added a small "shared kitchen" caution directly next to both
+  gluten-free checkboxes** (the cake card and the modal's add-a-cake
+  row), on top of the existing allergen accordion — belt-and-suspenders
+  against the option being misread as an allergen-safe guarantee.
+- **Fixed `Orange &amp; Almond Cake` → `Orange & Almond Cake` in the raw
+  data.** The HTML entity was correct when rendered via `innerHTML`
+  (which is most places), but leaked through literally wherever the
+  value hit a non-HTML-parsing context (Stripe line item names, JSON
+  metadata). The backend's copy of this data was already correct — only
+  the frontend had the stray entity.
+- **JSON parsing hardened against non-JSON error responses.** If
+  Netlify's own infrastructure has an outage, a request can come back
+  as an HTML error page rather than JSON — this previously threw an
+  unhandled parse error inside the generic catch block (harmless, but
+  swallowed the HTTP status). A new `parseJsonSafely()` helper now
+  preserves that status in the fallback message.
+- **Confirmation screen now shows a short reference number** (the last
+  8 characters of the Stripe session ID) — something concrete a
+  customer can quote if they need to contact you about a specific order.
+- **Documented, not changed**: a comment now explicitly states the
+  assumption behind rendering cake data via `innerHTML` without escaping
+  — safe because this data is source-controlled, and would need
+  revisiting if cake names/descriptions ever came from an external or
+  user-editable source.
+
+### Two things deliberately left as open questions, not decided for you
+
+- **The 20-item cap is per cart *line* (per cake + dietary variant), not
+  per cake overall.** Since standard and no-added-gluten versions are
+  separate lines, a customer can technically reach 40 of the same base
+  cake (20 standard + 20 no-added-gluten). If you intend the limit to be
+  20 *per variant*, this is already correct. If you intend 20 total per
+  cake regardless of variant, both `index.html` and
+  `create-checkout-session.js` would need to sum quantities across
+  variants of the same cake ID before checking the cap — not implemented,
+  since which behaviour you actually want is a business call, not a bug.
+- **There's still no total-cart quantity or dollar cap.** A customer can
+  add the maximum of every cake and variant in one order. This may be
+  entirely fine for you — the existing code comments already document
+  that daily production capacity is a backend/business-process concern,
+  not something this file enforces. Flagging again only because it
+  compounds with the point above (many variants × high per-line caps
+  can add up to a very large single order) — not because it's assumed
+  to need fixing.
+
+- **`validateDate()` no longer bails out silently when the date is
+  cleared.** Clearing the date field used to leave a stale "inside our
+  48-hour window" warning visible, skip refreshing the docket, and
+  skip saving the draft — so a cleared date could still come back after
+  a refresh. The empty-date branch now clears the warning, updates the
+  docket, and saves the draft, same as every other branch.
+- **Changing the suburb now saves the draft immediately**, not just on
+  the next unrelated save — previously picking a suburb and refreshing
+  right after could lose that specific selection.
+- **Restored time is now derived from fulfilment, never trusted from
+  storage.** A stale or hand-edited draft could previously contain a
+  mismatched pair like `fulfil: 'pickup'` alongside a leftover
+  "Delivery time TBC". `timeWindowFor()`/`timeNoteMessageFor()` are now
+  the single source of truth for this mapping, used identically whether
+  the customer just clicked Pickup/Delivery or a draft is being restored.
+- **Keyboard focus now moves into the Stripe-return confirmation modal**
+  when it appears, matching how the ordinary order modal already
+  behaves — previously only the *close* side of this was fixed, not
+  the open side.
+- **The confirmation icon now reflects what's actually happening.** It
+  used to be a permanent green tick regardless of outcome — including
+  sitting right next to "Payment not confirmed", which read as
+  contradictory. It now shows a neutral "…" while checking, the tick
+  only once genuinely confirmed, and a warning "!" (in the same tone
+  used elsewhere on the site for warnings) if verification fails.
+- **Mobile cart cramping addressed.** Reduced overlay/modal/docket
+  padding and allowed cart line items to wrap on narrow phones,
+  instead of forcing a 48px image, name, quantity stepper and Remove
+  button into one unbroken row. Worth an actual look on a real device
+  or emulator rather than taking this as a guarantee — CSS changes
+  like this are inherently something to eyeball, not just reason about.
+- **Long text in the docket can no longer overflow its column.** Email
+  addresses, delivery addresses, and notes now wrap rather than
+  potentially pushing the docket wider than its container, especially
+  relevant on mobile.
+- **Switching from Delivery back to Pickup now actually clears the
+  delivery address**, both the input field and `state.address` — not
+  just at the final payload-building step. Previously the value stayed
+  hidden but present, and the pickup payload technically still sent it
+  (the backend already ignored it regardless, so not a security issue —
+  just untidy).
+
+- **Delivery suburb can no longer be silently defaulted.** The suburb
+  dropdown now starts on a real placeholder ("Choose your area")
+  instead of quietly landing on the first real suburb in the list.
+  Step 2 now explicitly requires a suburb to be selected *and* pass
+  validation before Continue enables — previously only the address
+  field length was checked. Combined, a stale or tampered restored
+  suburb now visibly shows as unselected and blocks progress, rather
+  than silently defaulting to whichever suburb happens to be first.
+- **`currentDeliveryFee()` returns `null`, not `0`, when nothing valid
+  is selected.** The docket now shows "select your area below" in that
+  state instead of a misleading `$0.00` delivery line.
+- **`addToCart()` hardened** to reject unknown cake IDs, coerce/clamp
+  quantity, and only allow the no-added-gluten flag for cakes that
+  actually offer it — and now shares its validation logic with
+  `sanitizeCartArray()` (both call a new `resolveCartItem()` helper)
+  so the two can't drift apart from each other over time.
+- **Multi-cake message clarity improved without a redesign.** The
+  message field keeps its single textarea, but now has a persistent
+  helper line (not just placeholder text, which disappears once
+  typing starts) explaining the "Cake name: message" convention for
+  orders with more than one cake.
+- **Daily production capacity — explicitly still not handled, on
+  purpose.** Added clear comments in both files stating this needs to
+  be enforced in the backend if it's ever needed, never trusted to the
+  frontend. No capacity logic was added — this is a documentation-only
+  change flagging a known gap for later.
+- **Frontend price displays explicitly documented as preview-only.**
+  A comment above `cartSubtotal()` spells out that nothing it or
+  `currentDeliveryFee()` compute is ever sent to or trusted by the
+  backend — `create-checkout-session.js` independently recalculates
+  the real price and delivery fee from its own data every time.
+- **Confirmation wording no longer claims a receipt was emailed.**
+  Since this template is distributed for you to deploy yourself, and
+  the automatic email system depends on you completing the Resend/
+  webhook setup covered elsewhere in this README, the on-page success
+  message now says "We'll be in touch to confirm the details" instead
+  of asserting an email was sent — accurate regardless of whether
+  you've finished that setup yet. (The actual emails sent by
+  `stripe-webhook.js`, once configured, are unaffected — this only
+  changed the on-page confirmation text.)
+- **Orange & Almond Cake's tag is unchanged, confirmed intentional.**
+  It carries `No Added Gluten` (already gluten-free by nature) rather
+  than `No Added Gluten Option` (an optional substitution), so it
+  correctly shows no preparation checkbox — this was a deliberate
+  distinction from the start, not an oversight.
+
+- **Gluten-free checkbox on the cake cards now resets after adding.**
+  Previously it stayed checked after a successful "Add to cart," so
+  adding the same cake again later (meaning to get the standard
+  version this time) could silently add another no-added-gluten line
+  instead, since the customer had no reason to notice a checkbox
+  sitting behind an already-closed modal.
+- **Draft saving is now genuinely continuous, not just at checkpoints.**
+  Previously, typing into name/email/phone/address/message/notes only
+  got saved when the customer hit Continue, closed the modal, or
+  reached Stripe — so a refresh mid-typing could lose whatever hadn't
+  been captured yet. All seven free-text fields now trigger a debounced
+  save (500ms after the customer stops typing) on every keystroke, so
+  the "on every meaningful change" claim below is now actually true
+  rather than true-with-caveats.
+- **Restored delivery suburb is now validated, not just length-capped.**
+  A saved draft's suburb is checked against the real `DELIVERY_ZONES`
+  list before being trusted — if a draft is stale (e.g. saved before a
+  suburb was removed from that list) or manually tampered with via
+  devtools, it now falls back to no-suburb-selected rather than
+  restoring a value that can no longer resolve to a real fee.
+- **Focus-return fixed for the Stripe success screen.** Closing an
+  ordinary order modal correctly returns keyboard focus to whatever
+  button opened it. The post-payment confirmation modal is different —
+  it opens on a fresh page load from Stripe's redirect, with no button
+  click on *this* page load to return to — so it now explicitly points
+  focus back at the header's order button on close, rather than leaving
+  it nowhere in particular.
+
+- **Blackout dates set to your actual closures**: Christmas Day
+  (25 Dec 2026) and New Year's Day (1 Jan 2027). Edit `BLACKOUT_DATES`
+  in both `index.html` and `create-checkout-session.js` (same list,
+  must match) whenever your closures change.
+- **Gluten wording corrected everywhere.** The site's main allergen
+  disclosure already correctly says freedom from allergens/cross-contact
+  can't be guaranteed — but the checkout was inconsistently saying
+  "gluten-free" in a couple of places, which reads as a stronger,
+  allergen-safe claim than what's actually being offered in a shared
+  kitchen. Every instance — the checkbox, the cart line, the Stripe line
+  item, the order summary used in emails/Airtable — now consistently
+  says **"no added gluten"**, never "gluten-free".
+- **Dietary preparation is now a proper cart-line variant, not a flag
+  on an existing line.** Previously, "no added gluten" applied to an
+  entire cart line's whole quantity — so 1× standard + 1× no-added-
+  gluten of the *same* cake wasn't possible. Choosing the option now
+  happens at add-time (a checkbox next to "Add a cake", shown only for
+  eligible cakes), and creates its own separate cart line — so a
+  customer genuinely can order one of each variant of the same cake.
+  To change a line's variant, remove it and re-add with the checkbox
+  set as wanted, same as changing any other cart line.
+- **Stripe cancellation recovery is now complete**, not partial. It
+  used to restore the cart and contact details but not fulfilment
+  method, delivery suburb/address, or date — meaning a customer had to
+  redo those after cancelling and returning. All of it is now saved
+  and restored together (see "Draft persistence" below).
+- **Closing the order modal mid-flow no longer loses progress.**
+  Previously `openOrder()` unconditionally reset everything back to a
+  blank Step 1 every time it ran — so a customer who reached Step 3,
+  accidentally closed the modal, then reopened it, started completely
+  over (only the cart itself survived, via the older cart-only
+  persistence). The whole in-progress order is now retained for the
+  rest of that browser tab's session and restored automatically.
+- **Draft persistence, unified.** The separate "cart-only" and
+  "pending-order" sessionStorage mechanisms from the previous round
+  have been merged into one: the entire draft order (cart, fulfilment,
+  date, delivery details, contact fields) saves to sessionStorage on
+  every meaningful change, and restores automatically whenever the
+  order modal opens — covering an ordinary refresh, a cancelled Stripe
+  payment, and a closed-and-reopened modal with one mechanism instead
+  of three overlapping ones.
+- **Restored data is now sanitised, not trusted blindly.** Anything
+  pulled back out of sessionStorage — which a customer could hand-edit
+  via devtools, even though doing so can't affect what they're actually
+  charged — is re-validated before being trusted: unknown cake IDs are
+  dropped, quantities are clamped to 1–20, and a "no added gluten" flag
+  is only kept for cakes that actually offer it.
+- **Maximum booking window added: 6 months ahead.** The date picker
+  previously had no upper bound at all — someone could book indefinitely
+  far in the future. Enforced both as the date picker's `max` (immediate
+  feedback) and authoritatively server-side.
+- **Backend validation, confirmed line-by-line.** Every value the
+  browser sends is independently checked in
+  `create-checkout-session.js` before a Stripe session is ever created —
+  cake IDs against the allowlist, quantities against sane bounds, the
+  "no added gluten" flag only honoured where actually offered, delivery
+  suburbs against the allowlist, the date against both the 48-hour
+  cutoff *and* the new 6-month ceiling *and* blackout dates, and email/
+  phone against real format checks. None of this can be bypassed from
+  the frontend alone — see the numbered comments directly in that file.
+
+## History: production-readiness fixes (earlier version)
+
+*(Kept as a record. Some details are out of date, for example cake
+messages are now per cake, the notes box is gone, and the closed dates
+are Christmas Day and New Year's Day only. See "How the site works
+now" near the top for the current behaviour.)*
+
+- **Cart quantity cap can no longer be bypassed.** Clicking "Add to
+  cart" repeatedly (rather than using the +/− stepper) used to be able
+  to push a single cake's quantity past the intended cap of 20. Fixed
+  on the client, and — more importantly — already correctly enforced
+  server-side regardless (see `create-checkout-session.js`, which
+  rejects any quantity outside 1–20 before a Stripe session is ever
+  created).
+- **Gluten-free is now a real, selectable option** — not something a
+  customer has to think to type into the notes field. Cakes that
+  actually offer it (currently Raspberry Cheesecake, Lemon Mousse Cake,
+  Passionfruit Cheesecake — controlled by `glutenFreeOption: true` in
+  both `index.html`'s `CAKES` array and the matching object in
+  `create-checkout-session.js`) show a "make this one gluten-free"
+  checkbox per cart line. The choice is validated server-side too — a
+  gluten-free request for a cake that doesn't actually offer it is
+  silently ignored rather than blocking payment, and Orange & Almond
+  (already gluten-free by nature) intentionally has no checkbox at all.
+- **Custom messages now show which cakes actually support them.** Only
+  cakes tagged "Custom Message Available" offer piped messages — the
+  order form now shows a live note beneath the message field naming
+  which cart items currently qualify (or explains that none do), so a
+  customer isn't left guessing whether a message on, say, a cheesecake
+  will actually happen.
+- **Closed / blackout dates.** A `BLACKOUT_DATES` list (Christmas Day,
+  Boxing Day, New Year's Day are the current placeholders — edit both
+  copies, in `index.html` and `create-checkout-session.js`, to match
+  your actual closures) is now checked both for immediate feedback on
+  the date picker and authoritatively before a Stripe session is
+  created. **This only blocks specific closed dates — it does not limit
+  how many cakes can be booked for a single open day.** A genuine
+  per-day production capacity limit would need a live count of existing
+  orders for that date (e.g. querying Airtable at checkout time) rather
+  than a static list, and isn't included here — a reasonable next step
+  if order volume grows enough that this becomes a real constraint.
+- **The order review step shows everything before payment.** The
+  Step 4 docket now includes delivery address, email, and phone
+  alongside the cakes, method, date, message and allergy notes — so a
+  customer can actually catch a typo in their address before paying,
+  not just after.
+- **Stripe verification failures are now recoverable.** Previously, if
+  the one-time "did this payment actually succeed?" check hit a
+  temporary error, the page immediately stripped the session ID from
+  the URL regardless of outcome — meaning a refresh could no longer
+  retry, even though the payment itself may have gone through fine. The
+  session ID is now only removed from the URL after a *successful*
+  verification; a failed or errored check leaves it in place so
+  refreshing the page tries again.
+- **The confirmation heading now matches reality.** It used to say
+  "Order placed!" even while still checking, or after a failed
+  verification. It now reads "Checking payment…", "Order confirmed!",
+  or "Payment not confirmed" depending on what's actually happened.
+- **Stronger email/phone validation.** Email now uses the input's own
+  browser-level validation (`checkValidity()`) rather than just
+  checking for an "@" character, so something like `hello@` no longer
+  passes. Phone now requires a reasonable number of digits (7–15) on
+  both the client and server, rather than just "not empty".
+- **Cart survives more than just a cancelled Stripe payment now.** The
+  cart is saved to `sessionStorage` on every change (not only right
+  before a Stripe redirect), and silently restored on an ordinary page
+  refresh — not just the Stripe-cancel path that was handled before.
+- **Stale form fields no longer carry over between separate orders in
+  one visit.** Starting a second order after finishing (or abandoning)
+  a first one used to leave the previous order's name/email/phone/
+  address still sitting in the form fields. `openOrder()` now clears
+  all of them explicitly.
+- **Confirmation screen output is escaped**, even though it comes from
+  our own server rather than directly from the customer — a small
+  extra safeguard rather than relying solely on that trust boundary.
+
+- **Cart survives a cancelled Stripe payment.** Clicking "pay" is a full
+  page redirect to Stripe — if a customer cancels and comes back, the
+  page reloads from scratch, which used to silently empty their cart.
+  The cart and contact details are now stashed in `sessionStorage`
+  right before the redirect and restored automatically if they return
+  via the cancel path, so they don't have to rebuild their order.
+- **Webhook duplicate protection.** Stripe explicitly documents that it
+  can deliver the same webhook event more than once. This function now
+  checks (a) a fast in-memory record for the current warm instance, and
+  (b) whether this Stripe Session ID is already logged in Airtable —
+  so a retried delivery skips re-sending both emails and re-logging the
+  order, instead of duplicating them.
+- **Basic rate limiting** on `create-checkout-session` and
+  `verify-checkout-session` — max 10 checkout attempts / 20 verify
+  attempts per IP per 5 minutes. **Worth knowing the limits of this**:
+  it's a free, in-memory, best-effort check with no extra service to
+  set up — it resets on a cold start and isn't shared across multiple
+  concurrent function instances, so it won't stop a determined,
+  distributed attacker. It will stop the more likely case: an accidental
+  retry loop or a casual script hitting the endpoint from one place. If
+  this site ever needs to withstand deliberate abuse at real scale, a
+  proper distributed rate limiter (e.g. Upstash Redis) would be the next
+  step — not included here to avoid adding a paid dependency before
+  it's actually needed.
+
+## Still worth adding later (not included yet)
+- **Refunds** — handled manually via the Stripe Dashboard for now.
+
+## Staff text alerts (TNZ)
+
+Uses TNZ's REST API v3.00. Switched off until the token is added.
+
+1. In the TNZ Dashboard (my.tnz.co.nz): **Users** → your user → enable
+   API access → **API** tab → enable **Auth Token** → create one → **Copy**.
+2. In Netlify → **Environment variables**, add:
+
+| Key | Value |
+|---|---|
+| `TNZ_AUTH_TOKEN` | the Auth Token (tick "Contains secret values") |
+| `TNZ_TEST_MODE` | *(optional)* `true` to test without sending real texts |
+| `STAFF_SMS_NUMBER` | *(optional)* only if alerts should go somewhere other than +64273399264 |
+
+3. **Deploys → Trigger deploy → Deploy site**, then place a test order.
+   With `TNZ_TEST_MODE` = `true`, TNZ records the message as sent but
+   doesn't text anyone, so check it appears in the TNZ Dashboard. Then
+   delete `TNZ_TEST_MODE`, redeploy, and place another test order to get
+   a real text.
+
+If a text doesn't arrive, look in **Netlify → Logs → Functions →
+stripe-webhook** for a line starting "TNZ SMS error". A 401 means the
+token is wrong, or was refreshed in TNZ (refreshing cancels the old one,
+so paste the new one into Netlify and redeploy).
+
+## If something goes wrong saving an order
+
+When a payment succeeds, the webhook saves the order record first:
+Airtable if it's set up, otherwise the bakery email. If that step fails
+(for example Airtable or Resend is briefly down), the webhook tells Stripe
+so, and **Stripe automatically tries again**, repeatedly for up to 3 days.
+Nothing is emailed until the order has been saved. If the order is
+saved but an email doesn't go out (or the webhook is cut off before
+sending), Stripe's retry finds the order already in Airtable, doesn't
+save it again, and sends only the email(s) that didn't go out — each
+email has a fixed key, so Resend never sends the same one twice. If
+Airtable can't even be searched, the webhook waits for Stripe's retry
+instead of risking a second copy of the order.
+
+**If Airtable refuses the order because of how it's set up** (a column
+renamed or deleted, the table renamed, or the access token changed),
+retrying can't help, so the site doesn't. Instead the bakery email
+becomes the record: it arrives with "⚠️ NOT IN AIRTABLE" in the subject
+and a red box asking you to add the order to Airtable by hand. (If that
+email can't be sent either, Stripe retries as above.)
+
+The customer email is sent alongside the bakery email. A temporary
+failure (Resend down or busy) triggers a retry like anything else; a
+permanent refusal (e.g. an invalid address) is logged and not retried.
+The staff text is sent once, on the run that first saves the order.
+Note: Resend remembers email keys for 24 hours, so in the unlikely case
+that Stripe is still retrying a day later, the bakery email could arrive
+a second time.
+
+You can see any retries in **Stripe Dashboard → Developers → Webhooks →
+your endpoint**, where failed attempts show in red with the time of the
+next retry.
